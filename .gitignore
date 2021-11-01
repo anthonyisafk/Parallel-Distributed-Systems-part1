@@ -42,7 +42,7 @@
 *.idb
 *.pdb
 
-/home/anthony/pds/assignments/part1/pthreads
+pthreads
 
 # Kernel Module Compile Results
 *.mod*

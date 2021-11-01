@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <math.h>
 
 #define SIZE 15
 
@@ -33,13 +34,43 @@ int **makeRandomSparseTable(int size) {
   }
 
   // Add a 1 to the table with a 136/1000 probability.
+  // Only add values to the upper triangle of the table.
   for (int i = 0; i < size; i++) {
-    for (int j = 0; j < size; j++) {
+    for (int j = i; j < size; j++) {
       table[i][j] = (rand() % 1000 > 136) ? 0 : 1;
     }
   }
 
+  // Make it symmetric by setting A[i][j] = A[j][i]
+  // for the rest of the values.
+  for (int i = 0; i < size; i++) {
+    for (int j = 0; j < i; j++) {
+      table[i][j] = table[j][i];
+    }
+  }
+
   return table;
+}
+
+
+void printCSR(csr converted, long size) {
+  long nonzeros = converted.rowIndex[SIZE];
+  
+  printf("Values:");
+  for (int i = 0; i < nonzeros; i++) {
+    printf(" %d ", converted.values[i]);
+  }
+
+  printf("\nCol_index:");
+  for (int i = 0; i < nonzeros; i++) {
+    printf(" %ld ", converted.colIndex[i]);
+  }
+
+  printf("\nRow_index:");
+  for (int i = 0; i < size+1; i++) {
+    printf(" %ld ", converted.rowIndex[i]);
+  }
+  printf("\n");
 }
 
 
@@ -56,7 +87,7 @@ void printTable(int **table, int size) {
 
 
 // Converts a sparse matrix to CSR.
-csr convertTOCSR(int **table, long size) {
+csr matrixToCSR(int **table, long size) {
   // Keep track of the nonzero objects.
   long nonzeros = 0; 
 
@@ -125,9 +156,6 @@ int **matmul (int **table1, int **table2, int size) {
   return multTable;
 }
 
-// int **matmulParallel(int **table1, int **table2, int size) {
-//   continue;
-// }
 
 int main(int argc, char **argv) {
 
@@ -136,24 +164,11 @@ int main(int argc, char **argv) {
   printTable(random1, SIZE);
 
   // Try to convert the table to CSR. (Finally works)
-  csr converted = convertTOCSR(random1, (long)SIZE);
-  long nonzeros = converted.rowIndex[SIZE];
-
+  csr converted = matrixToCSR(random1, (long)SIZE);
+  
   // Print the resulting arrays, to test the result.
-  for (int i = 0; i < nonzeros; i++) {
-    printf(" %d ", converted.values[i]);
-  }
-  printf("\n");
+  printCSR(converted, SIZE);
 
-  for (int i = 0; i < nonzeros; i++) {
-    printf(" %ld ", converted.colIndex[i]);
-  }
-  printf("\n");
-
-  for (int i = 0; i < SIZE+1; i++) {
-    printf(" %ld ", converted.rowIndex[i]);
-  }
-  printf("\n");
   
   return 0;
 }
