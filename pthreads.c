@@ -12,10 +12,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <math.h>
 
-#define SIZE 15
+#define SIZE 5
+#define MAX_THREADS 1000000
 
 // A struct used to turn sparse matrices to CSR data structures.
 // The notation and algorithm used is taken directly from the given Wikipedia page.
@@ -135,6 +135,36 @@ csr matrixToCSR(int **table, long size) {
 }
 
 
+int **CSRtoMatrix(csr table, long size) {
+  // Initialize the new matrix and set everything to 0.
+  int **matrix = (int **) malloc(size * sizeof(int*));
+  for (int i = 0; i < size; i++) {
+    matrix[i] = (int *) malloc(size * sizeof(int));
+  }
+
+  for (int i = 0; i < size; i++) {
+    for (int j = 0; j < size; j++) {
+      matrix[i][j] = 0;
+    }
+  }
+
+  // Scan each row for nonzero values and plug them into the matrix.
+  for (long row = 0; row < size; row++) {
+    long start = table.rowIndex[row];
+    long end = table.rowIndex[row+1];
+
+    for (int j = start; j < end; j++) {
+      long column = table.colIndex[j];
+      int value = table.values[j];
+      matrix[row][column] = value;
+    }
+  }
+
+  // Done.
+  return matrix;
+}
+
+
 // Matrix multiplication ONLY FOR SQUARE MATRICES.
 int **matmul (int **table1, int **table2, int size) {
 	int **multTable = (int **) malloc(size * sizeof(int*));
@@ -227,20 +257,65 @@ csr csrSquare(csr converted, int **table, long size) {
 }
 
 
+csr hadamard(csr csrTable, int **square, long size) {
+  long nonzeros = csrTable.rowIndex[size];
+
+  long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
+  long *newColIndex = (long *) malloc(nonzeros * sizeof(long));
+  int *newValues = (int *) malloc(nonzeros * sizeof(int));
+  long newNonzeros = 0;
+
+  for (int i = 0; i < nonzeros; i++) {
+    newColIndex[i] = 0;
+    newValues[i] = 0;
+  }
+
+  for (int i = 0; i < size; i++) {
+    newRowIndex[i] = 0;
+  }
+
+  for (long row = 0; row < size; row++) {
+    newRowIndex[row] = newNonzeros;
+
+    long start = csrTable.rowIndex[row];
+    long end = csrTable.rowIndex[row+1];
+
+    for (int i = start; i < end; i++) {
+      long column = csrTable.colIndex[i];
+      int value = csrTable.values[i];
+
+      int cellValue = value * square[row][column];
+      if (cellValue > 0) {
+        newValues[newNonzeros] = cellValue;
+				newColIndex[newNonzeros] = column;
+				newNonzeros++;
+      }
+    }
+
+    // Add the final value to newRowIndex before exiting the loop.
+		if (row == size - 1) {
+			newRowIndex[size] = newNonzeros;
+		}
+  }
+
+  csr hadamard = {size, newValues, newColIndex, newRowIndex};
+  return hadamard;
+}
+
+
+
 int main(int argc, char **argv) {
-
-	// Initialize a random sparse matrix.
 	int **random1 = makeRandomSparseTable(SIZE);
-	printTable(random1, SIZE);
-
-	// Try to convert the table to CSR. (Finally works)
-	csr converted = matrixToCSR(random1, (long)SIZE);
-	
-	// Print the resulting arrays, to test the result.
-	// printCSR(converted, SIZE);
-
-	// int **square = matmul(random1, random1, SIZE);
+	csr converted = matrixToCSR(random1, SIZE);
 	csr squareCSR = csrSquare(converted, random1, SIZE);
+
+  int **squareMatrix = CSRtoMatrix(squareCSR, SIZE);
+
+  csr C = hadamard(converted, squareMatrix, SIZE);
+
+  printTable(random1, SIZE);
+  printTable(squareMatrix, SIZE);
+  printTable(CSRtoMatrix(C, SIZE), SIZE);
 	
 	return 0;
 }

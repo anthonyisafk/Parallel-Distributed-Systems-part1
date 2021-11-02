@@ -1,5 +1,5 @@
 /*
- * pthreads.c 
+ * sequential.c 
  * Convert a square N x N matrix into the CSR format, made for sparse matrices:
  * https://en.wikipedia.org/wiki/Sparse_matrix#Compressed_sparse_column_(CSC_or_CCS)
  * 
@@ -13,9 +13,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <omp.h>
 
-#define SIZE 5
-#define MAX_THREADS 1000000
+#define SIZE 10
 
 // A struct used to turn sparse matrices to CSR data structures.
 // The notation and algorithm used is taken directly from the given Wikipedia page.
