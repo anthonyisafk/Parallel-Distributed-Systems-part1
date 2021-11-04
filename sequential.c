@@ -15,7 +15,7 @@
 #include <math.h>
 #include <omp.h>
 
-#define SIZE 7
+#define SIZE 5
 
 // A struct used to turn sparse matrices to CSR data structures.
 // The notation and algorithm used is taken directly from the given Wikipedia page.
@@ -136,32 +136,32 @@ csr matrixToCSR(int **table, long size) {
 
 
 int **CSRtoMatrix(csr table, long size) {
-  // Initialize the new matrix and set everything to 0.
-  int **matrix = (int **) malloc(size * sizeof(int*));
-  for (int i = 0; i < size; i++) {
-    matrix[i] = (int *) malloc(size * sizeof(int));
-  }
+	// Initialize the new matrix and set everything to 0.
+	int **matrix = (int **) malloc(size * sizeof(int*));
+	for (int i = 0; i < size; i++) {
+		matrix[i] = (int *) malloc(size * sizeof(int));
+	}
 
-  for (int i = 0; i < size; i++) {
-    for (int j = 0; j < size; j++) {
-      matrix[i][j] = 0;
-    }
-  }
+	for (int i = 0; i < size; i++) {
+		for (int j = 0; j < size; j++) {
+			matrix[i][j] = 0;
+		}
+	}
 
-  // Scan each row for nonzero values and plug them into the matrix.
-  for (long row = 0; row < size; row++) {
-    long start = table.rowIndex[row];
-    long end = table.rowIndex[row+1];
+	// Scan each row for nonzero values and plug them into the matrix.
+	for (long row = 0; row < size; row++) {
+		long start = table.rowIndex[row];
+		long end = table.rowIndex[row+1];
 
-    for (int j = start; j < end; j++) {
-      long column = table.colIndex[j];
-      int value = table.values[j];
-      matrix[row][column] = value;
-    }
-  }
+		for (int j = start; j < end; j++) {
+			long column = table.colIndex[j];
+			int value = table.values[j];
+			matrix[row][column] = value;
+		}
+	}
 
-  // Done.
-  return matrix;
+	// Done.
+	return matrix;
 }
 
 
@@ -193,51 +193,90 @@ int **matmul (int **table1, int **table2, int size) {
 
 
 csr csrSquare(csr table, long size) {
-  long nonzeros = table.rowIndex[size];
-  int resizes = 10;
-  long newNonzeros = 0;
+	long nonzeros = table.rowIndex[size];
+	int resizes = 10;
+	long newNonzeros = 0;
 
 	// The new values array. Intialize all to 0. Do the same for the new column indices.
 	int *newValues = (int *) malloc(10 * SIZE * sizeof(int));
 	long *newColIndex = (long *) malloc(10 * SIZE * sizeof(long));
-  for (long i = 0; i < 10 * nonzeros; i++) {
+	for (long i = 0; i < 10 * nonzeros; i++) {
 		newValues[i] = 0;
 		newColIndex[i] = 0;
 	}
 
-  // Finally, initialize the new row index array.
+	// Finally, initialize the new row index array.
 	long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
 	for (long i = 0; i < size+1; i++) {
 		newRowIndex[i] = 0;
 	}
 
-  for (long row = 0; row < size; row++) {
-    newRowIndex[row] = newNonzeros;
-    long start = table.rowIndex[row];
-    long end = table.rowIndex[row+1];
+	for (long row = 0; row < size; row++) {
+		newRowIndex[row] = newNonzeros;
+		long start = table.rowIndex[row];
+		long end = table.rowIndex[row+1];
 
-    if (newNonzeros != 0 && (newNonzeros % (10*nonzeros) == 0)) {
-      resizes += 10;
+		if (newNonzeros != 0 && (newNonzeros % (10*nonzeros) == 0)) {
+			resizes += 10;
 			newValues = (int *) realloc(newValues, SIZE * resizes * sizeof(int));
 			newColIndex = (long *) realloc(newColIndex, SIZE * resizes * sizeof(long));
-    }
+		}
 
-    for (long column = 0; column < size; column++) {
-      int cellValue = 0;
+		// Scan and multiply -only nonzero elements- every single column. Since the matrix is
+		// symmetric, we actually scan every line from top to bottom,
+		// getting exactly the same result.
+		for (long column = 0; column < size; column++) {
+			int cellValue = 0;
+			long columnStart = table.rowIndex[column];
+			long columnEnd = table.rowIndex[column+1];
+
+			// This variable is used to leave a trace at the last element where the row-column pair
+			// was a match, for the element-wise multiplication to take place. Since the order here 
+			// is increasing, we leave a trace where the last match was found and the scan 
+			// for another matching pair starts at the next index.
+			int lastMatch = -1;
+
+			// If columnStart==start, then we've got the same line twice.
+			// So we skip the checks and the cell value is equal to the sum of all nonzero squares.
+			if (columnStart == start) {
+				for (int i = start; i < end; i++) {
+					cellValue += table.values[i] ^ 2;
+				}
+
+				newValues[newNonzeros] = cellValue;
+				newColIndex[newNonzeros] = column;
+				newNonzeros++;
+			} else {
+				for (long colElement = lastMatch+1; colElement < columnEnd; colElement++) {
+					for (long rowElement = start; rowElement < end; rowElement++) {
+						if (table.colIndex[colElement] == table.colIndex[rowElement]) {
+							lastMatch = colElement; // Mark the last match.
+
+							// Add the product to the cell value.
+							cellValue += table.values[colElement] * table.values[rowElement];
+						}
+					}
+				}
+
+				if (cellValue > 0) {
+					// printf("Cell value: %ld\n", cellValue);
+					newValues[newNonzeros] = cellValue;
+					newColIndex[newNonzeros] = column;
+					newNonzeros++;
+				}
+			}
 
 
-  }
+		}
 
-  // Add the final value to newRowIndex before exiting the loop.
-  if (row == size - 1) {
-    newRowIndex[size] = newNonzeros;
-  }
+		// Add the final value to newRowIndex before exiting the loop.
+		if (row == size - 1) {
+			newRowIndex[size] = newNonzeros;
+		}
+	}
 
-
-
-  }
-
-
+	csr square = {size, newValues, newColIndex, newRowIndex};
+	return square;
 }
 
 
@@ -308,65 +347,67 @@ csr csrSquareAlt(csr converted, int **table, long size) {
 
 
 csr hadamard(csr csrTable, int **square, long size) {
-  long nonzeros = csrTable.rowIndex[size];
+	long nonzeros = csrTable.rowIndex[size];
 
-  long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
-  long *newColIndex = (long *) malloc(nonzeros * sizeof(long));
-  int *newValues = (int *) malloc(nonzeros * sizeof(int));
-  long newNonzeros = 0;
+	long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
+	long *newColIndex = (long *) malloc(nonzeros * sizeof(long));
+	int *newValues = (int *) malloc(nonzeros * sizeof(int));
+	long newNonzeros = 0;
 
-  for (int i = 0; i < nonzeros; i++) {
-    newColIndex[i] = 0;
-    newValues[i] = 0;
-  }
+	for (int i = 0; i < nonzeros; i++) {
+		newColIndex[i] = 0;
+		newValues[i] = 0;
+	}
 
-  for (int i = 0; i < size; i++) {
-    newRowIndex[i] = 0;
-  }
+	for (int i = 0; i < size; i++) {
+		newRowIndex[i] = 0;
+	}
 
-  for (long row = 0; row < size; row++) {
-    newRowIndex[row] = newNonzeros;
+	for (long row = 0; row < size; row++) {
+		newRowIndex[row] = newNonzeros;
 
-    long start = csrTable.rowIndex[row];
-    long end = csrTable.rowIndex[row+1];
+		long start = csrTable.rowIndex[row];
+		long end = csrTable.rowIndex[row+1];
 
-    for (int i = start; i < end; i++) {
-      long column = csrTable.colIndex[i];
-      int value = csrTable.values[i];
+		for (int i = start; i < end; i++) {
+			long column = csrTable.colIndex[i];
+			int value = csrTable.values[i];
 
-      int cellValue = value * square[row][column];
-      if (cellValue > 0) {
-        newValues[newNonzeros] = cellValue;
+			int cellValue = value * square[row][column];
+			if (cellValue > 0) {
+				newValues[newNonzeros] = cellValue;
 				newColIndex[newNonzeros] = column;
 				newNonzeros++;
-      }
-    }
+			}
+		}
 
-    // Add the final value to newRowIndex before exiting the loop.
+		// Add the final value to newRowIndex before exiting the loop.
 		if (row == size - 1) {
 			newRowIndex[size] = newNonzeros;
 		}
-  }
+	}
 
-  csr hadamard = {size, newValues, newColIndex, newRowIndex};
-  return hadamard;
+	csr hadamard = {size, newValues, newColIndex, newRowIndex};
+	return hadamard;
 }
 
 
 
 int main(int argc, char **argv) {
 	int **random1 = makeRandomSparseTable(SIZE);
+	printTable(random1, SIZE);
 	csr converted = matrixToCSR(random1, SIZE);
-  printCSR(converted, SIZE);
 	csr squareCSR = csrSquareAlt(converted, random1, SIZE);
 
-  int **squareMatrix = CSRtoMatrix(squareCSR, SIZE);
+	int **squareMatrix = CSRtoMatrix(squareCSR, SIZE);
+	printTable(squareMatrix, SIZE);
 
-  csr C = hadamard(converted, squareMatrix, SIZE);
+	csr square = csrSquare(converted, SIZE);
+	printCSR(square, SIZE);
+	printCSR(squareCSR, SIZE);
 
-  printTable(random1, SIZE);
-  printTable(squareMatrix, SIZE);
-  printTable(CSRtoMatrix(C, SIZE), SIZE);
+
+	csr C = hadamard(converted, squareMatrix, SIZE);
 	
 	return 0;
 }
