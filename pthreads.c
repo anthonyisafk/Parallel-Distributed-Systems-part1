@@ -315,7 +315,9 @@ int main(int argc, char **argv) {
 
   printTable(random1, SIZE);
   printTable(squareMatrix, SIZE);
-  printTable(CSRtoMatrix(C, SIZE), SIZE);
+  printCSR(squareCSR, SIZE);
+
+  // printTable(CSRtoMatrix(C, SIZE), SIZE);
 	
 	return 0;
 }
