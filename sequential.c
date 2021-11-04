@@ -13,9 +13,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <omp.h>
 
-#define SIZE 5
+#define SIZE 10
 
 // A struct used to turn sparse matrices to CSR data structures.
 // The notation and algorithm used is taken directly from the given Wikipedia page.
@@ -234,39 +233,25 @@ csr csrSquare(csr table, long size) {
 			// was a match, for the element-wise multiplication to take place. Since the order here 
 			// is increasing, we leave a trace where the last match was found and the scan 
 			// for another matching pair starts at the next index.
-			int lastMatch = -1;
+			int lastMatch = columnStart - 1;
 
-			// If columnStart==start, then we've got the same line twice.
-			// So we skip the checks and the cell value is equal to the sum of all nonzero squares.
-			if (columnStart == start) {
-				for (int i = start; i < end; i++) {
-					cellValue += table.values[i] ^ 2;
-				}
+      for (long rowElement = start; rowElement < end; rowElement++) {
+        for (long colElement = lastMatch+1; colElement < columnEnd; colElement++) {
+          if (table.colIndex[colElement] == table.colIndex[rowElement]) {
+            lastMatch = colElement; // Mark the last match.
 
-				newValues[newNonzeros] = cellValue;
-				newColIndex[newNonzeros] = column;
-				newNonzeros++;
-			} else {
-        for (long rowElement = start; rowElement < end; rowElement++) {
-			  	for (long colElement = lastMatch+1; colElement < columnEnd; colElement++) {
-						if (table.colIndex[colElement] == table.colIndex[rowElement]) {
-							lastMatch = colElement; // Mark the last match.
+            // Add the product to the cell value.
+            cellValue += table.values[colElement] * table.values[rowElement];
+          }
+        }
+      }
 
-							// Add the product to the cell value.
-							cellValue += table.values[colElement] * table.values[rowElement];
-						}
-					}
-				}
-
-				if (cellValue > 0) {
-					// printf("Cell value: %ld\n", cellValue);
-					newValues[newNonzeros] = cellValue;
-					newColIndex[newNonzeros] = column;
-					newNonzeros++;
-				}
-			}
-
-
+      if (cellValue > 0) {
+        // printf("Cell value: %ld\n", cellValue);
+        newValues[newNonzeros] = cellValue;
+        newColIndex[newNonzeros] = column;
+        newNonzeros++;
+      }
 		}
 
 		// Add the final value to newRowIndex before exiting the loop.
@@ -282,12 +267,11 @@ csr csrSquare(csr table, long size) {
 
 // Calculates the square of CSR matrix, as long as it's square.
 csr csrSquareAlt(csr converted, int **table, long size) {
-	long nonzeros = converted.values[size];
+  long nonzeros = converted.values[size];
 
 	// The new values array. Intialize all to 0. Do the same for the new column indices.
 	int *newValues = (int *) malloc(10 * size * sizeof(int));
 	long *newColIndex = (long *) malloc(10 * size * sizeof(long));
-
 	for (long i = 0; i < 10 * nonzeros; i++) {
 		newValues[i] = 0;
 		newColIndex[i] = 0;
@@ -306,6 +290,7 @@ csr csrSquareAlt(csr converted, int **table, long size) {
 
 	// Scan every row using the row_index array.
 	for (long row = 0; row < size; row++) {
+    // Make sure to resize the arrays if they're full.
 		if (newNonzeros != 0 && (newNonzeros % (10*nonzeros) == 0)) {
 			resizes += 10;
 			newValues = (int *) realloc(newValues, size * resizes * sizeof(int));
@@ -321,10 +306,11 @@ csr csrSquareAlt(csr converted, int **table, long size) {
 		// printf("Start = %ld\t End = %ld\n", start, end);
 
 		for (long column = 0; column < size; column++) {
-			long cellValue = 0;
+			int cellValue = 0;
 
 			for (long element = start; element < end; element++) {
-				cellValue += converted.values[element] * table[converted.colIndex[element]][column];
+        long elementRow = converted.colIndex[element];
+				cellValue += converted.values[element] * table[elementRow][column];
 			}
 
 			if (cellValue > 0) {
@@ -394,20 +380,15 @@ csr hadamard(csr csrTable, int **square, long size) {
 
 
 int main(int argc, char **argv) {
-	int **random1 = makeRandomSparseTable(SIZE);
-	printTable(random1, SIZE);
-	csr converted = matrixToCSR(random1, SIZE);
-	csr squareCSR = csrSquareAlt(converted, random1, SIZE);
+  int **table = makeRandomSparseTable(SIZE);
+  csr converted = matrixToCSR(table, SIZE);
 
-	int **squareMatrix = CSRtoMatrix(squareCSR, SIZE);
-	printTable(squareMatrix, SIZE);
+  csr squareOld = csrSquareAlt(converted, table, SIZE);
+  printCSR(squareOld, SIZE);
 
-	csr square = csrSquare(converted, SIZE);
-	printCSR(square, SIZE);
-	printCSR(squareCSR, SIZE);
+  csr squareNew = csrSquare(converted, SIZE);
+  printCSR(squareNew, SIZE);
 
 
-	csr C = hadamard(converted, squareMatrix, SIZE);
-	
 	return 0;
 }
