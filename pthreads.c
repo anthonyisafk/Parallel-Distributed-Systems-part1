@@ -196,8 +196,8 @@ csr csrSquare(csr converted, int **table, long size) {
 	long nonzeros = converted.values[size];
 
 	// The new values array. Intialize all to 0. Do the same for the new column indices.
-	int *newValues = (int *) malloc(10 * SIZE * sizeof(int));
-	long *newColIndex = (long *) malloc(10 * SIZE * sizeof(long));
+	int *newValues = (int *) malloc(10 * size * sizeof(int));
+	long *newColIndex = (long *) malloc(10 * size * sizeof(long));
 
 	for (long i = 0; i < 10 * nonzeros; i++) {
 		newValues[i] = 0;
@@ -219,8 +219,8 @@ csr csrSquare(csr converted, int **table, long size) {
 	for (long row = 0; row < size; row++) {
 		if (newNonzeros != 0 && (newNonzeros % (10*nonzeros) == 0)) {
 			resizes += 10;
-			newValues = (int *) realloc(newValues, SIZE * resizes * sizeof(int));
-			newColIndex = (long *) realloc(newColIndex, SIZE * resizes * sizeof(long));
+			newValues = (int *) realloc(newValues, size * resizes * sizeof(int));
+			newColIndex = (long *) realloc(newColIndex, size * resizes * sizeof(long));
 		}
 
 		newRowIndex[row] = newNonzeros;
