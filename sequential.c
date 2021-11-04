@@ -15,7 +15,7 @@
 #include <math.h>
 #include <omp.h>
 
-#define SIZE 10
+#define SIZE 7
 
 // A struct used to turn sparse matrices to CSR data structures.
 // The notation and algorithm used is taken directly from the given Wikipedia page.
@@ -191,8 +191,58 @@ int **matmul (int **table1, int **table2, int size) {
 	return multTable;
 }
 
+
+csr csrSquare(csr table, long size) {
+  long nonzeros = table.rowIndex[size];
+  int resizes = 10;
+  long newNonzeros = 0;
+
+	// The new values array. Intialize all to 0. Do the same for the new column indices.
+	int *newValues = (int *) malloc(10 * SIZE * sizeof(int));
+	long *newColIndex = (long *) malloc(10 * SIZE * sizeof(long));
+  for (long i = 0; i < 10 * nonzeros; i++) {
+		newValues[i] = 0;
+		newColIndex[i] = 0;
+	}
+
+  // Finally, initialize the new row index array.
+	long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
+	for (long i = 0; i < size+1; i++) {
+		newRowIndex[i] = 0;
+	}
+
+  for (long row = 0; row < size; row++) {
+    newRowIndex[row] = newNonzeros;
+    long start = table.rowIndex[row];
+    long end = table.rowIndex[row+1];
+
+    if (newNonzeros != 0 && (newNonzeros % (10*nonzeros) == 0)) {
+      resizes += 10;
+			newValues = (int *) realloc(newValues, SIZE * resizes * sizeof(int));
+			newColIndex = (long *) realloc(newColIndex, SIZE * resizes * sizeof(long));
+    }
+
+    for (long column = 0; column < size; column++) {
+      int cellValue = 0;
+
+
+  }
+
+  // Add the final value to newRowIndex before exiting the loop.
+  if (row == size - 1) {
+    newRowIndex[size] = newNonzeros;
+  }
+
+
+
+  }
+
+
+}
+
+
 // Calculates the square of CSR matrix, as long as it's square.
-csr csrSquare(csr converted, int **table, long size) {
+csr csrSquareAlt(csr converted, int **table, long size) {
 	long nonzeros = converted.values[size];
 
 	// The new values array. Intialize all to 0. Do the same for the new column indices.
@@ -307,7 +357,8 @@ csr hadamard(csr csrTable, int **square, long size) {
 int main(int argc, char **argv) {
 	int **random1 = makeRandomSparseTable(SIZE);
 	csr converted = matrixToCSR(random1, SIZE);
-	csr squareCSR = csrSquare(converted, random1, SIZE);
+  printCSR(converted, SIZE);
+	csr squareCSR = csrSquareAlt(converted, random1, SIZE);
 
   int **squareMatrix = CSRtoMatrix(squareCSR, SIZE);
 
