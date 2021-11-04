@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define SIZE 10
+#define SIZE 6 
 
 // A struct used to turn sparse matrices to CSR data structures.
 // The notation and algorithm used is taken directly from the given Wikipedia page.
@@ -377,10 +377,28 @@ csr hadamard(csr csrTable, int **square, long size) {
 	return hadamard;
 }
 
+csr newhadamard(csr csrTable, csr square, long size){
+	for(int i = 0 ; i < size ; i++){
+		for(int j = csrTable.rowIndex[i] ; j < csrTable.rowIndex[i+1] ; j++){
+			for(int k = square.rowIndex[i] ; k < square.rowIndex[i+1] ; k++){
+				if(csrTable.colIndex[j] == square.colIndex[k]){
+					csrTable.values[j] = square.values[k];
+					break;
+				}
 
+				else csrTable.values[j] = 0 ;
+					
+			}
+		}
+	}
+
+	return csrTable ;
+	
+}
 
 int main(int argc, char **argv) {
   int **table = makeRandomSparseTable(SIZE);
+  
   csr converted = matrixToCSR(table, SIZE);
 
   csr squareOld = csrSquareAlt(converted, table, SIZE);
@@ -388,7 +406,19 @@ int main(int argc, char **argv) {
 
   csr squareNew = csrSquare(converted, SIZE);
   printCSR(squareNew, SIZE);
+  
+  int **mat = CSRtoMatrix( squareNew, SIZE);
+  
 
+
+  csr handa = newhadamard(converted , squareNew , SIZE);
+  printCSR(handa,SIZE);
+
+  int **handamat = CSRtoMatrix( handa, SIZE);
+  
+  printTable(table,SIZE);
+  printTable(mat, SIZE);
+  printTable(handamat,SIZE);
 
 	return 0;
 }
