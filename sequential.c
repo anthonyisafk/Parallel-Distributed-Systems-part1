@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "mmio.h"
 
 #define SIZE 6 
 
@@ -35,15 +36,19 @@ int **makeRandomSparseTable(int size) {
 	// Only add values to the upper triangle of the table.
 	for (int i = 0; i < size; i++) {
 		for (int j = i; j < size; j++) {
-			int newValue = rand() % 1000;
+			table[i][j] = (rand() % 1000 < 750) ? 0 : 1; 
 
-			if (newValue < 750) {
-				table[i][j] = 0;
-			} else if (newValue >= 750 && newValue <= 930) {
-				table[i][j] = 1;
-			} else {
-				table[i][j] = 2;
-			}
+			// ALTERNATIVE INITIALIZATION. USE 2's INSTEAD
+			// OF ONLY ONES AND ZEROS.
+
+			// int newValue = rand() % 1000;
+			// if (newValue < 750) {
+			// 	table[i][j] = 0;
+			// } else if (newValue >= 750 && newValue <= 930) {
+			// 	table[i][j] = 1;
+			// } else {
+			// 	table[i][j] = 2;
+			// }
 		}
 	}
 
@@ -57,6 +62,10 @@ int **makeRandomSparseTable(int size) {
 	return table;
 }
 
+
+// csr readMatToCSR() {
+	
+// }
 
 // Prints a CSR data structure.
 void printCSR(csr converted, long size) {
@@ -112,7 +121,7 @@ csr matrixToCSR(int **table, long size) {
 				nonzeros++;
 
 				// Make sure to extend the arrays in case their size exceeds the current one.
-				if (nonzeros % 100 == 0) {
+				if (nonzeros != 0 && (nonzeros % 100 == 0)) {
 					values = (int *) realloc(values, (nonzeros+100) * sizeof(int));
 					colIndex = (long *) realloc(colIndex, (nonzeros+100) * sizeof(long));
 				}
@@ -197,9 +206,9 @@ csr csrSquare(csr table, long size) {
 	long newNonzeros = 0;
 
 	// The new values array. Intialize all to 0. Do the same for the new column indices.
-	int *newValues = (int *) malloc(10 * SIZE * sizeof(int));
-	long *newColIndex = (long *) malloc(10 * SIZE * sizeof(long));
-	for (long i = 0; i < 10 * nonzeros; i++) {
+	int *newValues = (int *) malloc(10 * size * sizeof(int));
+	long *newColIndex = (long *) malloc(10 * size * sizeof(long));
+	for (long i = 0; i < 10 * size; i++) {
 		newValues[i] = 0;
 		newColIndex[i] = 0;
 	}
@@ -235,23 +244,23 @@ csr csrSquare(csr table, long size) {
 			// for another matching pair starts at the next index.
 			int lastMatch = columnStart - 1;
 
-      for (long rowElement = start; rowElement < end; rowElement++) {
-        for (long colElement = lastMatch+1; colElement < columnEnd; colElement++) {
-          if (table.colIndex[colElement] == table.colIndex[rowElement]) {
-            lastMatch = colElement; // Mark the last match.
+			for (long rowElement = start; rowElement < end; rowElement++) {
+				for (long colElement = lastMatch+1; colElement < columnEnd; colElement++) {
+					if (table.colIndex[colElement] == table.colIndex[rowElement]) {
+						lastMatch = colElement; // Mark the last match.
 
-            // Add the product to the cell value.
-            cellValue += table.values[colElement] * table.values[rowElement];
-          }
-        }
-      }
+						// Add the product to the cell value.
+						cellValue += table.values[colElement] * table.values[rowElement];
+					}
+				}
+			}
 
-      if (cellValue > 0) {
-        // printf("Cell value: %ld\n", cellValue);
-        newValues[newNonzeros] = cellValue;
-        newColIndex[newNonzeros] = column;
-        newNonzeros++;
-      }
+			if (cellValue > 0) {
+				// printf("Cell value: %ld\n", cellValue);
+				newValues[newNonzeros] = cellValue;
+				newColIndex[newNonzeros] = column;
+				newNonzeros++;
+			}
 		}
 
 		// Add the final value to newRowIndex before exiting the loop.
@@ -267,7 +276,7 @@ csr csrSquare(csr table, long size) {
 
 // Calculates the square of CSR matrix, as long as it's square.
 csr csrSquareAlt(csr converted, int **table, long size) {
-  long nonzeros = converted.values[size];
+	long nonzeros = converted.values[size];
 
 	// The new values array. Intialize all to 0. Do the same for the new column indices.
 	int *newValues = (int *) malloc(10 * size * sizeof(int));
@@ -290,7 +299,7 @@ csr csrSquareAlt(csr converted, int **table, long size) {
 
 	// Scan every row using the row_index array.
 	for (long row = 0; row < size; row++) {
-    // Make sure to resize the arrays if they're full.
+		// Make sure to resize the arrays if they're full.
 		if (newNonzeros != 0 && (newNonzeros % (10*nonzeros) == 0)) {
 			resizes += 10;
 			newValues = (int *) realloc(newValues, size * resizes * sizeof(int));
@@ -309,7 +318,7 @@ csr csrSquareAlt(csr converted, int **table, long size) {
 			int cellValue = 0;
 
 			for (long element = start; element < end; element++) {
-        long elementRow = converted.colIndex[element];
+				long elementRow = converted.colIndex[element];
 				cellValue += converted.values[element] * table[elementRow][column];
 			}
 
@@ -377,48 +386,92 @@ csr hadamard(csr csrTable, int **square, long size) {
 	return hadamard;
 }
 
-csr newhadamard(csr csrTable, csr square, long size){
-	for(int i = 0 ; i < size ; i++){
-		for(int j = csrTable.rowIndex[i] ; j < csrTable.rowIndex[i+1] ; j++){
-			for(int k = square.rowIndex[i] ; k < square.rowIndex[i+1] ; k++){
+
+// CSR-CSR Hadamard (element-wise) operation.
+csr newhadamard(csr csrTable, csr square, long size) {
+	long oldNonzeros = csrTable.rowIndex[size];
+	long newNonzeros = 0;
+
+	long *newColIndex = (long *) malloc(oldNonzeros * sizeof(long));
+	int *newValues = (int *) malloc(oldNonzeros * sizeof(int));
+	for (int i = 0; i < oldNonzeros; i++) {
+		newColIndex[i] = 0;
+		newValues[i] = 0;
+	}
+
+	long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
+	for (int i = 0; i < size+1; i++) {
+		newRowIndex[i] = 0;
+	}
+
+	// Use the old table and only transfer values to the new one if they are greater than 0.
+	for (int i = 0; i < size; i++) {
+		newRowIndex[i] = newNonzeros;
+
+		for (int j = csrTable.rowIndex[i]; j < csrTable.rowIndex[i+1]; j++) {
+			for (int k = square.rowIndex[i]; k < square.rowIndex[i+1]; k++) {
 				if(csrTable.colIndex[j] == square.colIndex[k]){
 					csrTable.values[j] = square.values[k];
-					break;
-				}
 
-				else csrTable.values[j] = 0 ;
+					newValues[newNonzeros] = csrTable.values[j];
+					newColIndex[newNonzeros] = csrTable.colIndex[j];
+					newNonzeros++;
 					
+					break;
+				} else { 
+					csrTable.values[j] = 0;
+				}
 			}
+		}
+
+		if (i == size-1) {
+			newRowIndex[size] = newNonzeros;
 		}
 	}
 
-	return csrTable ;
-	
+	csr hadamard = {size, newValues, newColIndex, newRowIndex};
+	return hadamard;
 }
 
 int main(int argc, char **argv) {
-  int **table = makeRandomSparseTable(SIZE);
-  
-  csr converted = matrixToCSR(table, SIZE);
+	// int **table = makeRandomSparseTable(SIZE);
+	// printTable(table,SIZE);
 
-  csr squareOld = csrSquareAlt(converted, table, SIZE);
-  printCSR(squareOld, SIZE);
+	// csr converted = matrixToCSR(table, SIZE);
+	// printCSR(converted, SIZE);
 
-  csr squareNew = csrSquare(converted, SIZE);
-  printCSR(squareNew, SIZE);
-  
-  int **mat = CSRtoMatrix( squareNew, SIZE);
-  
+	// csr squareNew = csrSquare(converted, SIZE);
+	// printCSR(squareNew, SIZE);
+	
+	// int **mat = CSRtoMatrix(squareNew, SIZE);
+	// printTable(mat, SIZE);
+
+	// csr handa = newhadamard(converted , squareNew , SIZE);
+	// printCSR(handa,SIZE);
+
+	// int **handamat = CSRtoMatrix( handa, SIZE);
+	// printTable(handamat,SIZE);
+
+	FILE *matrixFile;
+	int M, N, nz;
+	MM_typecode t;
+	int firstElements[10];
+
+	matrixFile = fopen("mycielskian3.mtx", "r");
+	int banner = mm_read_banner(matrixFile, &t);
+	int result = mm_read_mtx_crd_size(matrixFile, &M, &N, &nz);
+
+	printf("banner: %d\tresult: %d\n", banner, result);
+
+	for (int i = 0; i < 10; i++) {
+		fscanf(matrixFile, "%d", &firstElements[i]);
+		printf(" %d ", firstElements[i]);
+	}
+
+	
 
 
-  csr handa = newhadamard(converted , squareNew , SIZE);
-  printCSR(handa,SIZE);
 
-  int **handamat = CSRtoMatrix( handa, SIZE);
-  
-  printTable(table,SIZE);
-  printTable(mat, SIZE);
-  printTable(handamat,SIZE);
 
 	return 0;
 }
