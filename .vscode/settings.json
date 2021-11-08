@@ -1,5 +1,8 @@
 {
   "files.associations": {
-    "csr_operations.h": "c"
+    "csr_operations.h": "c",
+    "cilk_api.h": "c",
+    "mmio.h": "c",
+    "stdlib.h": "c"
   }
 }
