@@ -14,8 +14,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include "mmio.h"
+#include <time.h>
+#include <limits.h>
 
-#define SIZE 6 
+#define SIZE 50000
 
 // A struct used to turn sparse matrices to CSR data structures.
 // The notation and algorithm used is taken directly from the given Wikipedia page.
@@ -139,6 +141,9 @@ csr matrixToCSR(int **table, long size) {
 	}
 
 	csr converted = {size, values, colIndex, rowIndex};
+	free(rowIndex);
+	free(values);
+	free(colIndex);
 	return converted;
 }
 
@@ -200,6 +205,7 @@ int **matmul (int **table1, int **table2, int size) {
 }
 
 
+
 csr csrSquare(csr table, long size) {
 	long nonzeros = table.rowIndex[size];
 	int resizes = 10;
@@ -226,8 +232,8 @@ csr csrSquare(csr table, long size) {
 
 		if (newNonzeros != 0 && (newNonzeros % (10*nonzeros) == 0)) {
 			resizes += 10;
-			newValues = (int *) realloc(newValues, SIZE * resizes * sizeof(int));
-			newColIndex = (long *) realloc(newColIndex, SIZE * resizes * sizeof(long));
+			newValues = (int *) realloc(newValues, size * resizes * sizeof(int));
+			newColIndex = (long *) realloc(newColIndex, size * resizes * sizeof(long));
 		}
 
 		// Scan and multiply -only nonzero elements- every single column. Since the matrix is
@@ -272,6 +278,7 @@ csr csrSquare(csr table, long size) {
 	csr square = {size, newValues, newColIndex, newRowIndex};
 	return square;
 }
+
 
 
 // Calculates the square of CSR matrix, as long as it's square.
@@ -388,6 +395,7 @@ csr hadamard(csr csrTable, int **square, long size) {
 
 
 // CSR-CSR Hadamard (element-wise) operation.
+// FINAL VERSION OF THE FUNCTION.
 csr newhadamard(csr csrTable, csr square, long size) {
 	long oldNonzeros = csrTable.rowIndex[size];
 	long newNonzeros = 0;
@@ -430,48 +438,108 @@ csr newhadamard(csr csrTable, csr square, long size) {
 	}
 
 	csr hadamard = {size, newValues, newColIndex, newRowIndex};
+
 	return hadamard;
 }
 
 int main(int argc, char **argv) {
-	// int **table = makeRandomSparseTable(SIZE);
+	 
+	// time_t start , end ; 
+	//double timediff ;
+
+	//time(&start);
+	 //int **table = makeRandomSparseTable(SIZE);
 	// printTable(table,SIZE);
 
-	// csr converted = matrixToCSR(table, SIZE);
-	// printCSR(converted, SIZE);
+	 //csr converted = matrixToCSR(table, SIZE);
+	 //printCSR(converted, SIZE);
 
-	// csr squareNew = csrSquare(converted, SIZE);
-	// printCSR(squareNew, SIZE);
+	 //csr squareNew = csrSquare(converted, SIZE);
+	 //printCSR(squareNew, SIZE);
 	
-	// int **mat = CSRtoMatrix(squareNew, SIZE);
-	// printTable(mat, SIZE);
+	 //int **mat = CSRtoMatrix(squareNew, SIZE);
+	 //printTable(mat, SIZE);
 
-	// csr handa = newhadamard(converted , squareNew , SIZE);
-	// printCSR(handa,SIZE);
+	 //csr handa = newhadamard(converted , squareNew , SIZE);
+	 //printCSR(handa,SIZE);
 
-	// int **handamat = CSRtoMatrix( handa, SIZE);
-	// printTable(handamat,SIZE);
+	 //int **handamat = CSRtoMatrix( handa, SIZE);
+	 //printTable(handamat,SIZE);
 
+	//time(&end);
 	FILE *matrixFile;
 	int M, N, nz;
 	MM_typecode t;
 	int firstElements[10];
 
-	matrixFile = fopen("mycielskian3.mtx", "r");
+	matrixFile = fopen("mycielskian4.mtx", "r");
 	int banner = mm_read_banner(matrixFile, &t);
 	int result = mm_read_mtx_crd_size(matrixFile, &M, &N, &nz);
 
-	printf("banner: %d\tresult: %d\n", banner, result);
+	//printf("banner: %d\tresult: %d\n", banner, result);
 
-	for (int i = 0; i < 10; i++) {
+	/*for (int i = 0; i < 10; i++) {
 		fscanf(matrixFile, "%d", &firstElements[i]);
 		printf(" %d ", firstElements[i]);
+	}*/
+
+	//printf(" %d \n" , nz);
+
+	int *row , *col ;
+
+	row = (int *) malloc(2*nz * sizeof(int));	
+	col = (int *) malloc(2*nz * sizeof(int));
+
+	for(int i = 0 ; i < nz ; i++){
+
+	fscanf(matrixFile , "%d  %d \n" , &row[i] , &col[i]);
+		// 1-based 
+		row[i]--;
+		col[i]--;
+		//symetric matrix
+		row[i+nz] = col[i];
+		col[i+nz] = row[i];
 	}
 
 	
+	
+	csr Table ; 
+	Table.rowIndex = (long *) malloc((M+1)* sizeof(long));
+	Table.colIndex = (long *) malloc(2*nz * sizeof(long));
+	Table.values = (int *) malloc(2*nz * sizeof(int));
+
+	
+
+	
+	int current = 0 ;
+
+	for(int i = 0 ; i < M; i++){
+		for(int j = 0 ; j <2*nz ; j++){
+			if(row[j] == i ){
+				Table.rowIndex[i+1]++;
+				Table.values[current] = 1 ;
+				Table.colIndex[current] = col[j];
+				current ++ ;
+			}
+			Table.rowIndex[i+2] = Table.rowIndex[i+1];
+		}
+	}
+
+	printCSR(Table,M);
+
+	csr square = csrSquare(Table , M);
+
+	printCSR(square,M);
+
+	csr handamar = newhadamard(Table , square , M);
+
+	printCSR(handamar,M);
 
 
+	//timediff = difftime(end , start); 
+	//printf("%f \n", timediff );
 
+	
 
 	return 0;
 }
