@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "mmio.h"
 
 #define SIZE 5
 #define MAX_THREADS 1000000
@@ -305,6 +306,12 @@ csr hadamard(csr csrTable, int **square, long size) {
 
 
 int main(int argc, char **argv) {
+
+	//Read matrix from Matrix Market 
+	FILE *f ; 
+
+
+
 	int **random1 = makeRandomSparseTable(SIZE);
 	csr converted = matrixToCSR(random1, SIZE);
 	csr squareCSR = csrSquare(converted, random1, SIZE);

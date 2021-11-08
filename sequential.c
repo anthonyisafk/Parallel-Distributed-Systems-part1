@@ -400,6 +400,7 @@ csr newhadamard(csr csrTable, csr square, long size) {
 	long oldNonzeros = csrTable.rowIndex[size];
 	long newNonzeros = 0;
 
+
 	long *newColIndex = (long *) malloc(oldNonzeros * sizeof(long));
 	int *newValues = (int *) malloc(oldNonzeros * sizeof(int));
 	for (int i = 0; i < oldNonzeros; i++) {
@@ -419,16 +420,16 @@ csr newhadamard(csr csrTable, csr square, long size) {
 		for (int j = csrTable.rowIndex[i]; j < csrTable.rowIndex[i+1]; j++) {
 			for (int k = square.rowIndex[i]; k < square.rowIndex[i+1]; k++) {
 				if(csrTable.colIndex[j] == square.colIndex[k]){
-					csrTable.values[j] = square.values[k];
+					 
 
-					newValues[newNonzeros] = csrTable.values[j];
+					newValues[newNonzeros] = square.values[k];
 					newColIndex[newNonzeros] = csrTable.colIndex[j];
 					newNonzeros++;
 					
 					break;
-				} else { 
-					csrTable.values[j] = 0;
-				}
+				}//else { 
+					//csrTable.values[j] = 0;
+				//}
 			}
 		}
 
@@ -441,6 +442,7 @@ csr newhadamard(csr csrTable, csr square, long size) {
 
 	return hadamard;
 }
+
 
 int main(int argc, char **argv) {
 	 
@@ -531,9 +533,10 @@ int main(int argc, char **argv) {
 
 	printCSR(square,M);
 
-	csr handamar = newhadamard(Table , square , M);
+	csr hadamard = newhadamard(Table , square , M);
 
-	printCSR(handamar,M);
+	printf("%d",hadamard.values[5]);
+	printCSR(hadamard,M);
 
 
 	//timediff = difftime(end , start); 
