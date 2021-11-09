@@ -14,92 +14,159 @@
 #include <stdlib.h>
 #include <math.h>
 #include <limits.h>
+#include <unistd.h>
 
 #include "headers/csr.h"
-// #include "headers/csr_operations.h"
 #include "headers/mmio.h"
 #include "headers/helpers.h"
 
-#define SIZE 6 
+#define SIZE 6
 
 
-//Reads an .mtx and directly converts it to CSR.
-csr readmtx(char *mtx, MM_typecode *t, int N, int M, int nz) {
-	FILE *matrixFile;
-	matrixFile = fopen(mtx, "r");
-	int banner = mm_read_banner(matrixFile, t);
+csr *readmtx(char *mtx, MM_typecode t, int N, int M, int nz) {
+  printf("\nInitialize file.\n");
+	FILE *matrixFile = fopen(mtx, "r");
+  printf("\nRead the file.\n");
+  // sleep(1);
+  // printf("\nBack to reading...\n");
+	int banner = mm_read_banner(matrixFile, &t);
+  printf("\nRead banner.\n");
 	int result = mm_read_mtx_crd_size(matrixFile, &M, &N, &nz);
 
-	printf("banner: %d\tresult: %d\tnonzeros: %d\tM: %d\tN: %d\n",
-	banner, result, nz, M, N);
+	printf("\nbanner: %d\tresult: %d\tnonzeros: %d\tM: %d\tN: %d\n",
+	  banner, result, nz, M, N);
  
-	// // Display error messages and abort, if the matrix isn't square or hasn't been read properly.
-	// if (N != M) {
-	// 	printf("N and M are not equal. The matrix isn't square. Aborting...");
-	// 	csr returnError = {0, NULL, NULL, NULL};
-	// 	return returnError;
-	// }
+	// Display error messages and abort, if the matrix isn't square or hasn't been read properly.
+	if (N != M) {
+		printf("N and M are not equal. The matrix isn't square. Aborting...");
+		csr *returnError = {0, NULL, NULL, NULL};
+		return returnError;
+	}
 
-	// if (banner != 0 || result != 0) {
-	// 	printf("Error. Couldn't process the .mtx file!");
-	// 	csr returnError = {0, NULL, NULL, NULL};
-	// 	return returnError;	
-	// }
+	if (banner != 0 || result != 0) {
+		printf("Error. Couldn't process the .mtx file!");
+		csr *returnError = {0, NULL, NULL, NULL};
+		return returnError;	
+	}
 
-  int *row , *col ;
+	// Calculate the average nonzero elements per row. Use that number for the initial malloc.
+	int averagePerRow = (int) (nz / N + 1);
+  int initialSize = 2 * averagePerRow;
+	printf("\naveragePerRow = %d\n", averagePerRow);
 
-    row = (int *) malloc(2 * nz * sizeof(int));
-    col = (int *) malloc(2 * nz * sizeof(int));
+	// Store the column of each nonzero value in an array of arrays.
+	// Each sub-array corresponds to a row of the matrix.
+	int **valuesByRow = (int **) malloc(N * sizeof(int *));
+  printf("\nIntialized valuesByRow\n");
 
-    for(int i = 0 ; i < nz ; i++){
+	// Fill the valuesByRow array with INT_MIN, except for the first cell of each array.
+	// This position will be used to dictate where to put the next value.
+	// INT_MIN helps getting rid of unaltered values before each row is sorted.
+	for (int i = 0; i < N; i++) {
+		valuesByRow[i] = (int *) malloc(initialSize * sizeof(int));
+	}
 
-    fscanf(matrixFile , "%d  %d\n" , &row[i] , &col[i]);
-        // 1-based 
-        row[i]--;
-        col[i]--;
-        //symetric matrix
-        row[i+nz] = col[i];
-        col[i+nz] = row[i];
-    }
+	for (int i = 0; i < N; i++) {
+		for (int j = 0; j < initialSize; j++) {			
+			if (j == 0) {
+				valuesByRow[i][j] = 0;
+			} else {
+				valuesByRow[i][j] = INT_MIN; // will be used as an "error code".
+			}
+		}
+	}
+  printf("\nAll arrays initialized\n");
 
+	// Initialize the CSR struct's attributes.
+	long *rowIndex = (long *) malloc((N+1) * sizeof(long));
+	for (int i = 0; i < N+1; i++) {
+		rowIndex[i] = 0;
+	}
 
+	// The maximum total of nonzero values will be 2*nz (if no element is stored in the main diagonal).
+	int *values = (int *) malloc(2 * nz * sizeof(int));
+	long *colIndex = (long *) malloc(2 * nz *sizeof(long));
+	for (int i = 0; i < nz; i++) {
+		values[i] = -1;
+		colIndex[i] = -1;
+	}
+  printf("\nThe CSR arrays as well...\n");
 
-    csr Table ; 
-    Table.rowIndex = (long *) malloc((M+1) * sizeof(long));
-    Table.colIndex = (long *) malloc(2 * nz * sizeof(long));
-    Table.values = (int *) malloc(2 * nz * sizeof(int));
+	long nonzeros = 0;
+	int row = 0;
+  int column = 0; // variables used to scheme through the .mtx file.
 
+	for (int i = 0; i < nz; i++) {
+		// Read the values and decrease them by one, since Matlab is 1-index based.
+		fscanf(matrixFile, "%d %d\n", &row, &column);
+    printf("Row = %d\tColumn = %d\t", row, column);
+		row--;
+		column--;
+		int newPosition = valuesByRow[row][0]; 
+    printf("valuesByRow[%d][0] = %d", row, valuesByRow[row][0]);
 
+		if (newPosition > 0 && (newPosition % initialSize == 0)) {
+			valuesByRow[row] = (int *) realloc(valuesByRow[row], (newPosition/initialSize + initialSize) * sizeof(int));
+		}
+		valuesByRow[row][0]++;
+		newPosition++;
+		valuesByRow[row][newPosition] = column;
 
+		// Add the symmetric value if the element isn't part of the main diagonal.
+		if (row != column) {
+			newPosition = valuesByRow[column][0]; 
 
-    int current = 0 ;
+			if (newPosition > 0 && (newPosition % (initialSize) == 0)) {
+				valuesByRow[column] = (int *) realloc(valuesByRow[column], (newPosition/initialSize + initialSize) * sizeof(int));
+			}
+			valuesByRow[column][0]++;
+			newPosition++;		
+			valuesByRow[column][newPosition] = row;	
+		}
+	}
 
-    for(int i = 0 ; i < M; i++){
-        for(int j = 0 ; j <2*nz ; j++){
-            if(row[j] == i ){
-                Table.rowIndex[i+1]++;
-                Table.values[current] = 1 ;
-                Table.colIndex[current] = col[j];
-                current ++ ;
-            }
-            Table.rowIndex[i+2] = Table.rowIndex[i+1];
-        }
-    }
+  // Turn the arrays we made into a CSR structure by scanning each row.
+	for (int row = 0; row < N; row++) {
+		rowIndex[row] = nonzeros;
+
+		for (int column = 1; column < valuesByRow[row][0]+1; column++) {
+			values[nonzeros] = 1;
+			colIndex[nonzeros] = valuesByRow[row][column];
+			nonzeros++;
+		}
+
+		if (row == N - 1) {
+			rowIndex[N] = nonzeros;
+		}
+	}
+	
+	csr *converted;
+  converted->size= N;
+  converted->values = values;
+  converted->colIndex = colIndex;
+  converted->rowIndex = rowIndex;
+	return converted;
 }
 
 
+
 int main(int argc, char **argv) {
+  // int **test = makeRandomSparseTable(SIZE);
+  // printTable(test, SIZE);
+  // csr testCSR = matrixToCSR(test, SIZE);
+
+  // csr testSquare = csrSquare(testCSR, SIZE);
+  // printCSR(&testSquare, SIZE);
+
+  // csr C = newhadamard(testCSR, testSquare, SIZE);
+  // printCSR(&C, SIZE);
+
   FILE *matrixFile;
   int M, N, nz;
-  MM_typecode *t;
-  char *mtx = "mycielskian4.mtx";
+  MM_typecode t;
+  char *mtx = "tables/mycielskian4.mtx";
 
-
-
-  int **test = makeRandomSparseTable(SIZE);
-  printTable(test, SIZE);
-
-  csr csr_mtx = readmtx(mtx, t, N, M, nz);
+  readmtx(mtx, t, N, M, nz);
 
 
 }
