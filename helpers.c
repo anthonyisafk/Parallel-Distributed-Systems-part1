@@ -10,7 +10,6 @@
 #include "headers/csr.h"
 #include "headers/helpers.h"
 
-
 // Reads an .mtx file and outputs the resulting CSR form.
 csr readmtx(char *mtx, MM_typecode t, int N, int M, int nz) {
 	FILE *matrixFile = fopen(mtx, "r");
@@ -98,16 +97,18 @@ csr csrSquare(csr table, long size) {
 		long start = table.rowIndex[row];
 		long end = table.rowIndex[row+1];
 
-		if (newNonzeros == resizes * size - 1) {
-			resizes += 10;
-			newValues = (int *) realloc(newValues, size * resizes * sizeof(int));
-			newColIndex = (long *) realloc(newColIndex, size * resizes * sizeof(long));
-		}
-
 		// Scan and multiply -only nonzero elements- every single column. Since the matrix is
 		// symmetric, we actually scan every line from top to bottom,
 		// getting exactly the same result.
 		for (long column = 0; column < size; column++) {
+
+      // Make sure to check the table for resizes regularly.
+      if (newNonzeros == resizes * size - 1) {
+        resizes += 5;
+        newValues = (int *) realloc(newValues, size * resizes * sizeof(int));
+        newColIndex = (long *) realloc(newColIndex, size * resizes * sizeof(long));
+		  }
+
 			int cellValue = 0;
 			long columnStart = table.rowIndex[column];
 			long columnEnd = table.rowIndex[column+1];
