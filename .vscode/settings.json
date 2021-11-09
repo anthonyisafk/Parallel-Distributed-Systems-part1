@@ -3,6 +3,7 @@
     "csr_operations.h": "c",
     "cilk_api.h": "c",
     "mmio.h": "c",
-    "stdlib.h": "c"
+    "stdlib.h": "c",
+    "helpers.h": "c"
   }
 }

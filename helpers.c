@@ -11,19 +11,78 @@
 #include "headers/helpers.h"
 
 
+// Reads an .mtx file and outputs the resulting CSR form.
+csr readmtx(char *mtx, MM_typecode t, int N, int M, int nz) {
+	FILE *matrixFile = fopen(mtx, "r");
+	int banner = mm_read_banner(matrixFile, &t);
+	int result = mm_read_mtx_crd_size(matrixFile, &M, &N, &nz);
+
+	printf("\nbanner: %d\tresult: %d\tnonzeros: %d\tM: %d\tN: %d\n",
+	  banner, result, nz, M, N);
+ 
+	// Display error messages and abort, if the matrix isn't square or hasn't been read properly.
+	if (N != M) {
+		printf("N and M are not equal. The matrix isn't square. Aborting...");
+		csr returnError = {0, NULL, NULL, NULL};
+		return returnError;
+	}
+
+	if (banner != 0 || result != 0) {
+		printf("Error. Couldn't process the .mtx file!");
+		csr returnError = {0, NULL, NULL, NULL};
+		return returnError;	
+	}
+
+  int *row, *col;
+	row = (int *) malloc(2*nz * sizeof(int));	
+	col = (int *) malloc(2*nz * sizeof(int));
+
+	for(int i = 0 ; i < nz ; i++) {
+    fscanf(matrixFile , "%d  %d \n" , &row[i] , &col[i]);
+    // Decrease the values since Matlab is 1-based. 
+    row[i]--;
+    col[i]--;
+
+    // Add the symmetric values, since the .mtx files contains only half the matrix.
+    row[i+nz] = col[i];
+    col[i+nz] = row[i];
+	}
+	
+	csr Table;
+  Table.size = N;
+	Table.rowIndex = (long *) malloc((M+1) * sizeof(long));
+	Table.colIndex = (long *) malloc(2 * nz * sizeof(long));
+	Table.values = (int *) malloc(2 * nz * sizeof(int));
+
+	int nonzeros = 0;
+
+	for (int i = 0; i < M; i++) {
+		for (int j = 0; j < 2*nz; j++) {
+			if (row[j] == i) {
+				Table.rowIndex[i+1]++;
+				Table.values[nonzeros] = 1;
+				Table.colIndex[nonzeros] = col[j];
+				nonzeros++;
+			}
+			Table.rowIndex[i+2] = Table.rowIndex[i+1];
+		}
+	}
+
+  return Table;
+}
 
 
 // Calculates the square of CSR matrix, as long as it's square.
 // FINAL VERSION OF THE FUNCTION.
 csr csrSquare(csr table, long size) {
 	long nonzeros = table.rowIndex[size];
-	int resizes = 10;
+	int resizes = 5;
 	long newNonzeros = 0;
 
 	// The new values array. Intialize all to 0. Do the same for the new column indices.
-	int *newValues = (int *) malloc(10 * size * sizeof(int));
-	long *newColIndex = (long *) malloc(10 * size * sizeof(long));
-	for (long i = 0; i < 10 * size; i++) {
+	int *newValues = (int *) malloc(resizes * size * sizeof(int));
+	long *newColIndex = (long *) malloc(resizes * size * sizeof(long));
+	for (long i = 0; i < resizes * size; i++) {
 		newValues[i] = 0;
 		newColIndex[i] = 0;
 	}
@@ -316,7 +375,7 @@ csr matrixToCSR(int **table, long size) {
 }
 
 
-int **CSRtoMatrix(csr *table, long size) {
+int **CSRtoMatrix(csr table, long size) {
 	// Initialize the new matrix and set everything to 0.
 	int **matrix = (int **) malloc(size * sizeof(int*));
 	for (int i = 0; i < size; i++) {
@@ -331,12 +390,12 @@ int **CSRtoMatrix(csr *table, long size) {
 
 	// Scan each row for nonzero values and plug them into the matrix.
 	for (long row = 0; row < size; row++) {
-		long start = table->rowIndex[row];
-		long end = table->rowIndex[row+1];
+		long start = table.rowIndex[row];
+		long end = table.rowIndex[row+1];
 
 		for (int j = start; j < end; j++) {
-			long column = table->colIndex[j];
-			int value = table->values[j];
+			long column = table.colIndex[j];
+			int value = table.values[j];
 			matrix[row][column] = value;
 		}
 	}
@@ -350,22 +409,22 @@ int **CSRtoMatrix(csr *table, long size) {
  * ---------- HELPERS ----------
  */ 
 // Prints a CSR data structure.
-void printCSR(csr *converted, long size) {
-	long nonzeros = converted->rowIndex[size];
+void printCSR(csr converted, long size) {
+	long nonzeros = converted.rowIndex[size];
 	
 	printf("Values:");
 	for (int i = 0; i < nonzeros; i++) {
-		printf(" %d ", converted->values[i]);
+		printf(" %d ", converted.values[i]);
 	}
 
 	printf("\nCol_index:");
 	for (int i = 0; i < nonzeros; i++) {
-		printf(" %ld ", converted->colIndex[i]);
+		printf(" %ld ", converted.colIndex[i]);
 	}
 
 	printf("\nRow_index:");
 	for (int i = 0; i < size+1; i++) {
-		printf(" %ld ", converted->rowIndex[i]);
+		printf(" %ld ", converted.rowIndex[i]);
 	}
 	printf("\n\n");
 }
