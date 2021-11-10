@@ -53,15 +53,15 @@ csr readmtx(char *mtx, MM_typecode t, int N, int M, int nz) {
 	Table.colIndex = (long *) malloc(2 * nz * sizeof(long));
 	Table.values = (int *) malloc(2 * nz * sizeof(int));
 
-	int nonzeros = 0;
+	int currentEntry = 0;
 
 	for (int i = 0; i < M; i++) {
 		for (int j = 0; j < 2*nz; j++) {
 			if (row[j] == i) {
 				Table.rowIndex[i+1]++;
-				Table.values[nonzeros] = 1;
-				Table.colIndex[nonzeros] = col[j];
-				nonzeros++;
+				Table.values[currentEntry] = 1;
+				Table.colIndex[currentEntry] = col[j];
+				currentEntry++;
 			}
 			Table.rowIndex[i+2] = Table.rowIndex[i+1];
 		}
