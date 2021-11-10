@@ -17,7 +17,7 @@ csr readmtx(char *mtx, MM_typecode t, int N, int M, int nz) {
 	int result = mm_read_mtx_crd_size(matrixFile, &M, &N, &nz);
 
 	printf("\nbanner: %d\tresult: %d\tnonzeros: %d\tM: %d\tN: %d\n",
-	  banner, result, nz, M, N);
+		banner, result, nz, M, N);
  
 	// Display error messages and abort, if the matrix isn't square or hasn't been read properly.
 	if (N != M) {
@@ -32,23 +32,23 @@ csr readmtx(char *mtx, MM_typecode t, int N, int M, int nz) {
 		return returnError;	
 	}
 
-  int *row, *col;
-	row = (int *) malloc(2*nz * sizeof(int));	
-	col = (int *) malloc(2*nz * sizeof(int));
+	int *row, *col;
+	row = (int *) malloc(2 * nz * sizeof(int));	
+	col = (int *) malloc(2 * nz * sizeof(int));
 
-	for(int i = 0 ; i < nz ; i++) {
-    fscanf(matrixFile , "%d  %d \n" , &row[i] , &col[i]);
-    // Decrease the values since Matlab is 1-based. 
-    row[i]--;
-    col[i]--;
+	for(int i = 0; i < nz; i++) {
+		fscanf(matrixFile , "%d  %d \n", &row[i], &col[i]);
+		// Decrease the values since Matlab is 1-based. 
+		row[i]--;
+		col[i]--;
 
-    // Add the symmetric values, since the .mtx files contains only half the matrix.
-    row[i+nz] = col[i];
-    col[i+nz] = row[i];
+		// Add the symmetric values, since the .mtx files contains only half the matrix.
+		row[i+nz] = col[i];
+		col[i+nz] = row[i];
 	}
 	
 	csr Table;
-  Table.size = N;
+	Table.size = N;
 	Table.rowIndex = (long *) malloc((M+1) * sizeof(long));
 	Table.colIndex = (long *) malloc(2 * nz * sizeof(long));
 	Table.values = (int *) malloc(2 * nz * sizeof(int));
@@ -67,7 +67,7 @@ csr readmtx(char *mtx, MM_typecode t, int N, int M, int nz) {
 		}
 	}
 
-  return Table;
+	return Table;
 }
 
 
@@ -102,12 +102,12 @@ csr csrSquare(csr table, long size) {
 		// getting exactly the same result.
 		for (long column = 0; column < size; column++) {
 
-      // Make sure to check the table for resizes regularly.
-      if (newNonzeros == resizes * size - 1) {
-        resizes += 5;
-        newValues = (int *) realloc(newValues, size * resizes * sizeof(int));
-        newColIndex = (long *) realloc(newColIndex, size * resizes * sizeof(long));
-		  }
+			// Make sure to check the table for resizes regularly.
+			if (newNonzeros == resizes * size - 1) {
+				resizes += 5;
+				newValues = (int *) realloc(newValues, size * resizes * sizeof(int));
+				newColIndex = (long *) realloc(newColIndex, size * resizes * sizeof(long));
+			}
 
 			int cellValue = 0;
 			long columnStart = table.rowIndex[column];
@@ -144,12 +144,125 @@ csr csrSquare(csr table, long size) {
 		}
 	}
 
+	// Resize the arrays to save space and avoid null values.
+	newValues = (int *) realloc(newValues, newNonzeros * sizeof(int));
+	newColIndex = (long *) realloc(newColIndex, newNonzeros * sizeof(long));
+
 	csr square;
-  square.size = size;
-  square.values = newValues;
-  square.colIndex = newColIndex;
-  square.rowIndex = newRowIndex;
+	square.size = size;
+	square.values = newValues;
+	square.colIndex = newColIndex;
+	square.rowIndex = newRowIndex;
 	return square;
+}
+
+
+// CSR-CSR Hadamard (element-wise) operation.
+// FINAL VERSION OF THE FUNCTION.
+csr newhadamard(csr csrTable, csr square, long size) {
+	long oldNonzeros = csrTable.rowIndex[size];
+	long newNonzeros = 0;
+
+	long *newColIndex = (long *) malloc(oldNonzeros * sizeof(long));
+	int *newValues = (int *) malloc(oldNonzeros * sizeof(int));
+	for (int i = 0; i < oldNonzeros; i++) {
+		newColIndex[i] = 0;
+		newValues[i] = 0;
+	}
+
+	long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
+	for (int i = 0; i < size+1; i++) {
+		newRowIndex[i] = 0;
+	}
+
+	// Use the old table and only transfer values to the new one if they are greater than 0.
+	for (int i = 0; i < size; i++) {
+		newRowIndex[i] = newNonzeros;
+
+		for (int j = csrTable.rowIndex[i]; j < csrTable.rowIndex[i+1]; j++) {
+			for (int k = square.rowIndex[i]; k < square.rowIndex[i+1]; k++) {
+				if(csrTable.colIndex[j] == square.colIndex[k]) {
+					csrTable.values[j] = square.values[k];
+
+					newValues[newNonzeros] = csrTable.values[j];
+					newColIndex[newNonzeros] = csrTable.colIndex[j];
+					newNonzeros++;
+					
+					break;
+				}
+			}
+		}
+
+		if (i == size-1) {
+			newRowIndex[size] = newNonzeros;
+		}
+	}
+
+	// Resize the arrays to save space and avoid null values.
+	newValues = (int *) realloc(newValues, newNonzeros * sizeof(int));
+	newColIndex = (long *) realloc(newColIndex, newNonzeros * sizeof(long));
+
+	csr hadamard;
+	hadamard.size = size;
+	hadamard.values = newValues;
+	hadamard.colIndex = newColIndex;
+	hadamard.rowIndex = newRowIndex;
+	return hadamard;
+}
+
+
+long *countTriangles(csr C) {
+	long size = C.size;
+	long *triangleCount = (long *) malloc(size * sizeof(long));
+	for (long i = 0; i < size; i++) {
+		triangleCount[i] = 0;
+	}
+
+	// Add all the values in each row, then divide by 2.
+	// Simulates the operation of multiplying the table with a nx1 vector.
+	for (long i = 0; i < size; i++) {
+		long start = C.rowIndex[i];
+		long end = C.rowIndex[i+1];
+
+		for (long j = start; j < end; j++) {
+			triangleCount[i] += C.values[j];
+			
+			// Divide by 2 if we reached the last value of the current row.
+			if (j == end - 1) {
+				triangleCount[i] /= 2;
+			}
+		}
+	}
+
+	return triangleCount;
+}
+
+
+// Matrix multiplication. Only need rows1, cols1 and cols2, because
+// cols1==rows2 is required. The new matrix is of size rows1 x cols2.
+int **matmul (int **table1, int **table2, long rows1, long cols1, long cols2) {
+	int **multTable = (int **) malloc(rows1 * sizeof(int*));
+
+	for (int i = 0; i < rows1; i++) {
+		multTable[i] = (int *) malloc(rows1 * sizeof(int));
+	}
+
+	// Set the table values to 0 to avoid garbage initializations. 
+	for (int i = 0; i < rows1; i++) {
+		for (int j = 0; j < cols2; j++) {
+			multTable[i][j] = 0;
+		}
+	}
+
+	for (int i = 0; i < rows1; i++) {
+		for (int j = 0; j < cols2; j++) {
+			for (int k = 0; k < cols1; k++) {
+				multTable[i][j] += table1[i][k] * table2[k][j];
+			}
+		}
+	}
+
+	return multTable;
 }
 
 
@@ -215,60 +328,10 @@ csr csrSquareAlt(csr converted, int **table, long size) {
 	}
 
 	csr product = {size, newValues, newColIndex, newRowIndex};
-  free(newValues);
-  free(newColIndex);
-  free(newRowIndex);
+	free(newValues);
+	free(newColIndex);
+	free(newRowIndex);
 	return product;
-}
-
-
-// CSR-CSR Hadamard (element-wise) operation.
-// FINAL VERSION OF THE FUNCTION.
-csr newhadamard(csr csrTable, csr square, long size) {
-	long oldNonzeros = csrTable.rowIndex[size];
-	long newNonzeros = 0;
-
-	long *newColIndex = (long *) malloc(oldNonzeros * sizeof(long));
-	int *newValues = (int *) malloc(oldNonzeros * sizeof(int));
-	for (int i = 0; i < oldNonzeros; i++) {
-		newColIndex[i] = 0;
-		newValues[i] = 0;
-	}
-
-	long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
-	for (int i = 0; i < size+1; i++) {
-		newRowIndex[i] = 0;
-	}
-
-	// Use the old table and only transfer values to the new one if they are greater than 0.
-	for (int i = 0; i < size; i++) {
-		newRowIndex[i] = newNonzeros;
-
-		for (int j = csrTable.rowIndex[i]; j < csrTable.rowIndex[i+1]; j++) {
-			for (int k = square.rowIndex[i]; k < square.rowIndex[i+1]; k++) {
-				if(csrTable.colIndex[j] == square.colIndex[k]) {
-					csrTable.values[j] = square.values[k];
-
-					newValues[newNonzeros] = csrTable.values[j];
-					newColIndex[newNonzeros] = csrTable.colIndex[j];
-					newNonzeros++;
-					
-					break;
-				}
-			}
-		}
-
-		if (i == size-1) {
-			newRowIndex[size] = newNonzeros;
-		}
-	}
-
-	csr hadamard;
-  hadamard.size = size;
-  hadamard.values = newValues;
-  hadamard.colIndex = newColIndex;
-  hadamard.rowIndex = newRowIndex;
-	return hadamard;
 }
 
 
@@ -324,21 +387,21 @@ csr hadamard(csr csrTable, int **square, long size) {
 csr matrixToCSR(int **table, long size) {
 	// Keep track of the nonzero objects.
 	long nonzeros = 0; 
-  long resizes = 10;
+	long resizes = 10;
 
 	// Initialize the 3 necessary arrays. row_index has a standard length of "rows+1"
 	long *rowIndex = (long *) malloc((size+1) * sizeof(long));
-  for (int i = 0; i < size+1; i++) {
-    rowIndex[i] = 0;
-  }
+	for (int i = 0; i < size+1; i++) {
+		rowIndex[i] = 0;
+	}
 
 	// values and col_index have a length of the total nonzero values.
 	int *values = (int *) malloc(10 * size * sizeof(int));
 	long *colIndex = (long *) malloc(10 * size * sizeof(long));
-  for (int i = 0; i < 10*size; i++) {
-    values[i] = 0;
-    colIndex[i] = 0;
-  }
+	for (int i = 0; i < 10*size; i++) {
+		values[i] = 0;
+		colIndex[i] = 0;
+	}
 	
 	for (long i = 0; i < size; i++) {
 		// Add the nonzero values that are placed above the current row. 
@@ -350,7 +413,7 @@ csr matrixToCSR(int **table, long size) {
 
 				// Make sure to extend the arrays in case their size exceeds the current one.
 				if (nonzeros == resizes * size -1) {
-          resizes += 10;
+					resizes += 10;
 					values = (int *) realloc(values, (resizes * size) * sizeof(int));
 					colIndex = (long *) realloc(colIndex, (resizes * size) * sizeof(long));
 				}
@@ -368,10 +431,10 @@ csr matrixToCSR(int **table, long size) {
 	}
 
 	csr converted;
-  converted.size = size;
-  converted.values = values;
-  converted.colIndex = colIndex;
-  converted.rowIndex = rowIndex;
+	converted.size = size;
+	converted.values = values;
+	converted.colIndex = colIndex;
+	converted.rowIndex = rowIndex;
 	return converted;
 }
 
@@ -464,33 +527,6 @@ int **makeRandomSparseTable(int size) {
 	}
 
 	return table;
-}
-
-
-// Matrix multiplication ONLY FOR SQUARE MATRICES.
-int **matmul (int **table1, int **table2, int size) {
-	int **multTable = (int **) malloc(size * sizeof(int*));
-
-	for (int i = 0; i < size; i++) {
-		multTable[i] = (int *) malloc(size * sizeof(int));
-	}
-
-	// Set the table values to 0 to avoid garbage initializations. 
-	for (int i = 0; i < size; i++) {
-		for (int j = 0; j < size; j++) {
-			multTable[i][j] = 0;
-		}
-	}
-
-	for (int i = 0; i < size; i++) {
-		for (int j = 0; j < size; j++) {
-			for (int k = 0; k < size; k++) {
-				multTable[i][j] += table1[i][k] * table2[k][j];
-			}
-		}
-	}
-
-	return multTable;
 }
 
 
