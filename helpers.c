@@ -61,8 +61,11 @@ csr readmtx(char *mtx, MM_typecode t, int N, int M, int nz) {
 				Table.rowIndex[i+1]++;
 				Table.values[currentEntry] = 1;
 				Table.colIndex[currentEntry] = col[j];
+
 				currentEntry++;
 			}
+
+      // Pass the current total of nonzeros to the next row.
 			Table.rowIndex[i+2] = Table.rowIndex[i+1];
 		}
 	}
