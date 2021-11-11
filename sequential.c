@@ -25,42 +25,31 @@
 #include "headers/mmio.h"
 #include "headers/helpers.h"
 
-#define SIZE 6
-
 
 int main(int argc, char **argv) {
-  // int **test = makeRandomSparseTable(SIZE);
-  // printTable(test, SIZE);
-  // int **square = matmul(test, test, SIZE, SIZE, SIZE);
-  // printTable(square, SIZE);
-
-  // csr testCSR = matrixToCSR(test, SIZE);
-  // csr testSquare = csrSquare(testCSR, SIZE);
-  // printTable(CSRtoMatrix(testSquare, SIZE), SIZE);
-  // printCSR(&testSquare, SIZE);
-
-  // csr C = newhadamard(testCSR, testSquare, SIZE);
-  // printCSR(&C, SIZE);
-
   FILE *matrixFile;
   int M, N, nz;
   MM_typecode t;
-  char *mtxFileName = "tables/G51.mtx";
+  char *mtxFileName = "tables/dblp-2010.mtx";
+  csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
+  printf("\n\nJust finished reading.\n\n");
 
-  csr mtx = readmtx(mtxFileName, t, N, M, nz);
-  // printCSR(mtx, mtx.size);
+  // CALCULATE THE C ARRAY AND COUNT TRIANGLES.
+  struct timeval stop, start;
+  gettimeofday(&start, NULL);
 
-  csr mtx_square = csrSquare(mtx, mtx.size);
-  // printCSR(mtx_square, mtx_square.size);
+  csr C = hadamardSingleStep(mtx);
+  long *newTriangles = countTriangles(C);
 
-  csr C = newhadamard(mtx, mtx_square, mtx.size);
-  // printCSR(C, C.size);
+  gettimeofday(&stop, NULL);
+  uint timediff = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+  printf("\nThe serial algorithm took %lu us\n\n", timediff);
 
-  long *triangles = countTriangles(C);
-  for (long i = 0; i < C.size; i++) {
-    printf(" %ld ", triangles[i]);
+  long triangles = 0;
+  for (int i = 0; i < C.size; i++) {
+    triangles += newTriangles[i];
   }
-  printf("\n");
 
+  printf("\nTriangles in total: %ld\n", triangles);
 
 }

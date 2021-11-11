@@ -4,6 +4,11 @@
     "cilk_api.h": "c",
     "mmio.h": "c",
     "stdlib.h": "c",
-    "helpers.h": "c"
+    "helpers.h": "c",
+    "cilk_helpers.h": "c",
+    "array": "c",
+    "string_view": "c",
+    "initializer_list": "c",
+    "utility": "c"
   }
 }

@@ -44,6 +44,8 @@
 
 pthreads
 sequential
+openmp
+opencilk
 
 # Kernel Module Compile Results
 *.mod*
