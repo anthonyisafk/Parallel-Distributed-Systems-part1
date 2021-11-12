@@ -41,9 +41,7 @@ csr readmtx_dynamic(char *mtx, MM_typecode t, int N, int M, int nz) {
     valuesByRow[i] = (int *) calloc(2, sizeof(int));
   }
 
-  printf("Initialized valuesByRow\n");
-
-  long nonzeros = 0;
+  uint nonzeros = 0;
   for (int i = 0; i < nz; i++) {
     int row, col;
     fscanf(matrixFile , "%d  %d \n", &row, &col);
@@ -66,23 +64,21 @@ csr readmtx_dynamic(char *mtx, MM_typecode t, int N, int M, int nz) {
     }
   }
 
-  printf("Exited the looop.\n");
-
   // This is a binary matrix. All the nonzero values are 1 by default.
-  int *values = (long *) malloc(nonzeros *sizeof(int));
+  int *values = (uint *) malloc(nonzeros *sizeof(int));
   for (int i = 0; i < nonzeros; i++) {
     values[i] = 1;
   }
 
 
-  long *rowIndex = (long *) calloc(N, sizeof(long));
-  long *colIndex = (long *) calloc(nonzeros, sizeof(long));
+  uint *rowIndex = (uint *) calloc(N, sizeof(uint));
+  uint *colIndex = (uint *) calloc(nonzeros, sizeof(uint));
 
-  for (long row = 0; row < N; ++row) {
+  for (uint row = 0; row < N; ++row) {
     int rowNonzeros = valuesByRow[row][0];
 
     for (int column = 1; column < rowNonzeros+1; column++) {
-      long currentNonzeros = rowIndex[row + 1];
+      uint currentNonzeros = rowIndex[row + 1];
 
       colIndex[currentNonzeros] = valuesByRow[row][column];
       rowIndex[row + 1]++;
@@ -98,27 +94,27 @@ csr readmtx_dynamic(char *mtx, MM_typecode t, int N, int M, int nz) {
 }
 
 
-csr hadamardSingleStep(csr table) {
-  long size = table.size;
-	long nonzeros = table.rowIndex[size];
-	long newNonzeros = 0;
-
+csr hadamardSingleStep(csr table, uint start, uint end) {
+  uint size = end - start;
+  
+	uint nonzeros = table.rowIndex[end] - table.rowIndex[start];
+	uint newNonzeros = 0;
 	// The new values array. Intialize all to 0. Do the same for the new column indices.
 	int *newValues = (int *) calloc(nonzeros, sizeof(int));
-	long *newColIndex = (long *) calloc(nonzeros, sizeof(long));
+	uint *newColIndex = (uint *) calloc(nonzeros, sizeof(uint));
 
 	// Finally, initialize the new row index array.
-	long *newRowIndex = (long *) calloc((size+1), sizeof(long));
+	uint *newRowIndex = (uint *) calloc((size+1), sizeof(uint));
 
   printf("Initialized the csr arrays\n");
 
   // Find the values in A^2, iff the original matrix had a nonzero in that position.
-	for (long row = 0; row < size; row++) {
-    long rowStart = table.rowIndex[row];
-    long rowEnd = table.rowIndex[row+1];
+	for (uint row = start; row < end; row++) {
+    uint rowStart = table.rowIndex[row];
+    uint rowEnd = table.rowIndex[row+1];
 
-    for (long index = rowStart; index < rowEnd; index++) {
-      long currentColumn = table.colIndex[index];
+    for (uint index = rowStart; index < rowEnd; index++) {
+      uint currentColumn = table.colIndex[index];
 
       int value = dot(table, row, currentColumn);
 
@@ -138,7 +134,7 @@ csr hadamardSingleStep(csr table) {
 	}
 
   // newValues = (int *) realloc(newValues, newNonzeros * sizeof(int));
-  // newColIndex = (long *) realloc(newValues, newNonzeros * sizeof(long));
+  // newColIndex = (uint *) realloc(newValues, newNonzeros * sizeof(uint));
 
   csr hadamard = {size, newValues, newColIndex, newRowIndex};
   return hadamard;
@@ -146,21 +142,21 @@ csr hadamardSingleStep(csr table) {
 
 
 // Calculates the dot product of two vectors.
-int dot(csr table, long row, long column) {
+int dot(csr table, uint row, uint column) {
   // Symmetric table. Rows are identical to columns and vice versa.
-  long rowStart = table.rowIndex[row];
-  long rowEnd = table.rowIndex[row+1];
+  uint rowStart = table.rowIndex[row];
+  uint rowEnd = table.rowIndex[row+1];
 
-  long colStart = table.rowIndex[column];
-  long colEnd = table.rowIndex[column+1];
+  uint colStart = table.rowIndex[column];
+  uint colEnd = table.rowIndex[column+1];
 
   int value = 0;
   // Leaves a trace of the last match. The next iteratio will start from
   // the nexr position to get rid of unnecessary comparisons.
-  long lastMatch = colStart - 1;
+  uint lastMatch = colStart - 1;
 
-  for (long i = rowStart; i < rowEnd; i++) {
-    for (long j = lastMatch+1; j < colEnd; j++) {
+  for (uint i = rowStart; i < rowEnd; i++) {
+    for (uint j = lastMatch+1; j < colEnd; j++) {
       if (table.colIndex[i] == table.colIndex[j]) {
         value += table.values[i] * table.values[j];
         break;
@@ -172,20 +168,20 @@ int dot(csr table, long row, long column) {
 }
 
 
-long *countTriangles(csr C) {
-	long size = C.size;
-	long *triangleCount = (long *) malloc(size * sizeof(long));
-	for (long i = 0; i < size; i++) {
+uint *countTriangles(csr C) {
+	uint size = C.size;
+	uint *triangleCount = (uint *) malloc(size * sizeof(uint));
+	for (uint i = 0; i < size; i++) {
 		triangleCount[i] = 0;
 	}
 
 	// Add all the values in each row, then divide by 2.
 	// Simulates the operation of multiplying the table with a nx1 vector.
-	for (long i = 0; i < size; i++) {
-		long start = C.rowIndex[i];
-		long end = C.rowIndex[i+1];
+	for (uint i = 0; i < size; i++) {
+		uint start = C.rowIndex[i];
+		uint end = C.rowIndex[i+1];
 
-		for (long j = start; j < end; j++) {
+		for (uint j = start; j < end; j++) {
 			triangleCount[i] += C.values[j];
 			
 			// Divide by 2 if we reached the last value of the current row.
@@ -201,7 +197,7 @@ long *countTriangles(csr C) {
 
 // Matrix multiplication. Only need rows1, cols1 and cols2, because
 // cols1==rows2 is required. The new matrix is of size rows1 x cols2.
-int **matmul (int **table1, int **table2, long rows1, long cols1, long cols2) {
+int **matmul (int **table1, int **table2, uint rows1, uint cols1, uint cols2) {
 	int **multTable = (int **) malloc(rows1 * sizeof(int*));
 
 	for (int i = 0; i < rows1; i++) {
@@ -227,48 +223,48 @@ int **matmul (int **table1, int **table2, long rows1, long cols1, long cols2) {
 }
 
 
-// Calculates the square of CSR matrix, as long as it's square.
+// Calculates the square of CSR matrix, as uint as it's square.
 // FINAL VERSION OF THE FUNCTION.
-csr csrSquare(csr table, long size) {
-	long nonzeros = table.rowIndex[size];
+csr csrSquare(csr table, uint size) {
+	uint nonzeros = table.rowIndex[size];
 	int resizes = 5;
-	long newNonzeros = 0;
+	uint newNonzeros = 0;
 
 	// The new values array. Intialize all to 0. Do the same for the new column indices.
 	int *newValues = (int *) malloc(resizes * size * sizeof(int));
-	long *newColIndex = (long *) malloc(resizes * size * sizeof(long));
-	for (long i = 0; i < resizes * size; i++) {
+	uint *newColIndex = (uint *) malloc(resizes * size * sizeof(uint));
+	for (uint i = 0; i < resizes * size; i++) {
 		newValues[i] = 0;
 		newColIndex[i] = 0;
 	}
 
 	// Finally, initialize the new row index array.
-	long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
-	for (long i = 0; i < size+1; i++) {
+	uint *newRowIndex = (uint *) malloc((size+1) * sizeof(uint));
+	for (uint i = 0; i < size+1; i++) {
 		newRowIndex[i] = 0;
 	}
 
-	for (long row = 0; row < size; row++) {
+	for (uint row = 0; row < size; row++) {
 		newRowIndex[row] = newNonzeros;
-		long start = table.rowIndex[row];
-		long end = table.rowIndex[row+1];
+		uint start = table.rowIndex[row];
+		uint end = table.rowIndex[row+1];
 
 		// Scan and multiply -only nonzero elements- every single column. Since the matrix is
 		// symmetric, we actually scan every line from top to bottom,
 		// getting exactly the same result.
-		for (long column = start; column < end; column++) {
+		for (uint column = start; column < end; column++) {
 
 			// Make sure to check the table for resizes regularly.
 			if (newNonzeros == resizes * size - 1) {
 				resizes += 5;
 				newValues = (int *) realloc(newValues, size * resizes * sizeof(int));
-				newColIndex = (long *) realloc(newColIndex, size * resizes * sizeof(long));
+				newColIndex = (uint *) realloc(newColIndex, size * resizes * sizeof(uint));
 			}
 
 			int cellValue = dot(table, row, table.colIndex[column]);
 
-			// long columnStart = table.rowIndex[column];
-			// long columnEnd = table.rowIndex[column+1];
+			// uint columnStart = table.rowIndex[column];
+			// uint columnEnd = table.rowIndex[column+1];
 
 			// // This variable is used to leave a trace at the last element where the row-column pair
 			// // was a match, for the element-wise multiplication to take place. Since the order here 
@@ -276,8 +272,8 @@ csr csrSquare(csr table, long size) {
 			// // for another matching pair starts at the next index.
 			// int lastMatch = columnStart - 1;
 
-			// for (long rowElement = start; rowElement < end; rowElement++) {
-			// 	for (long colElement = lastMatch; colElement < columnEnd; colElement++) {
+			// for (uint rowElement = start; rowElement < end; rowElement++) {
+			// 	for (uint colElement = lastMatch; colElement < columnEnd; colElement++) {
 			// 		if (table.colIndex[colElement] == table.colIndex[rowElement]) {
 			// 			lastMatch = colElement; // Mark the last match.
 
@@ -303,7 +299,7 @@ csr csrSquare(csr table, long size) {
 
 	// Resize the arrays to save space and avoid null values.
 	newValues = (int *) realloc(newValues, newNonzeros * sizeof(int));
-	newColIndex = (long *) realloc(newColIndex, newNonzeros * sizeof(long));
+	newColIndex = (uint *) realloc(newColIndex, newNonzeros * sizeof(uint));
 
 	csr square;
 	square.size = size;
@@ -316,18 +312,18 @@ csr csrSquare(csr table, long size) {
 
 // CSR-CSR Hadamard (element-wise) operation.
 // FINAL VERSION OF THE FUNCTION.
-csr newhadamard(csr csrTable, csr square, long size) {
-	long oldNonzeros = csrTable.rowIndex[size];
-	long newNonzeros = 0;
+csr newhadamard(csr csrTable, csr square, uint size) {
+	uint oldNonzeros = csrTable.rowIndex[size];
+	uint newNonzeros = 0;
 
-	long *newColIndex = (long *) malloc(oldNonzeros * sizeof(long));
+	uint *newColIndex = (uint *) malloc(oldNonzeros * sizeof(uint));
 	int *newValues = (int *) malloc(oldNonzeros * sizeof(int));
 	for (int i = 0; i < oldNonzeros; i++) {
 		newColIndex[i] = 0;
 		newValues[i] = 0;
 	}
 
-	long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
+	uint *newRowIndex = (uint *) malloc((size+1) * sizeof(uint));
 	for (int i = 0; i < size+1; i++) {
 		newRowIndex[i] = 0;
 	}
@@ -357,7 +353,7 @@ csr newhadamard(csr csrTable, csr square, long size) {
 
 	// Resize the arrays to save space and avoid null values.
 	newValues = (int *) realloc(newValues, newNonzeros * sizeof(int));
-	newColIndex = (long *) realloc(newColIndex, newNonzeros * sizeof(long));
+	newColIndex = (uint *) realloc(newColIndex, newNonzeros * sizeof(uint));
 
 	csr hadamard;
 	hadamard.size = size;
@@ -412,8 +408,8 @@ csr readmtx(char *mtx, MM_typecode t, int N, int M, int nz) {
 	
 	csr Table;
 	Table.size = N;
-	Table.rowIndex = (long *) malloc((M+1) * sizeof(long));
-	Table.colIndex = (long *) malloc(2 * nz * sizeof(long));
+	Table.rowIndex = (uint *) malloc((M+1) * sizeof(uint));
+	Table.colIndex = (uint *) malloc(2 * nz * sizeof(uint));
 	Table.values = (int *) malloc(2 * nz * sizeof(int));
 
 	int currentEntry = 0;
@@ -441,50 +437,50 @@ csr readmtx(char *mtx, MM_typecode t, int N, int M, int nz) {
 }
 
 
-csr csrSquareAlt(csr converted, int **table, long size) {
-	long nonzeros = converted.values[size];
+csr csrSquareAlt(csr converted, int **table, uint size) {
+	uint nonzeros = converted.values[size];
 
 	// The new values array. Intialize all to 0. Do the same for the new column indices.
 	int *newValues = (int *) malloc(10 * size * sizeof(int));
-	long *newColIndex = (long *) malloc(10 * size * sizeof(long));
-	for (long i = 0; i < 10 * nonzeros; i++) {
+	uint *newColIndex = (uint *) malloc(10 * size * sizeof(uint));
+	for (uint i = 0; i < 10 * nonzeros; i++) {
 		newValues[i] = 0;
 		newColIndex[i] = 0;
 	}
 
 	// Finally, initialize the new row index array.
-	long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
-	for (long i = 0; i < size+1; i++) {
+	uint *newRowIndex = (uint *) malloc((size+1) * sizeof(uint));
+	for (uint i = 0; i < size+1; i++) {
 		newRowIndex[i] = 0;
 	}
 
 	// Keep the new matrix's total of nonzero values.
-	long newNonzeros = 0;
+	uint newNonzeros = 0;
 	// Keep tab of how many times the newValues and colIndex arrays have been resized.
 	int resizes = 10; 
 
 	// Scan every row using the row_index array.
-	for (long row = 0; row < size; row++) {
+	for (uint row = 0; row < size; row++) {
 		// Make sure to resize the arrays if they're full.
 		if (newNonzeros != 0 && (newNonzeros % (10*nonzeros) == 0)) {
 			resizes += 10;
 			newValues = (int *) realloc(newValues, size * resizes * sizeof(int));
-			newColIndex = (long *) realloc(newColIndex, size * resizes * sizeof(long));
+			newColIndex = (uint *) realloc(newColIndex, size * resizes * sizeof(uint));
 		}
 
 		newRowIndex[row] = newNonzeros;
 		// printf("Row: %ld\t Nonzeros = %ld\n", row, newRowIndex[row]);
 
 		// Get the indices of the values that lie within each row.
-		long start = converted.rowIndex[row];
-		long end = converted.rowIndex[row+1];
+		uint start = converted.rowIndex[row];
+		uint end = converted.rowIndex[row+1];
 		// printf("Start = %ld\t End = %ld\n", start, end);
 
-		for (long column = 0; column < size; column++) {
+		for (uint column = 0; column < size; column++) {
 			int cellValue = 0;
 
-			for (long element = start; element < end; element++) {
-				long elementRow = converted.colIndex[element];
+			for (uint element = start; element < end; element++) {
+				uint elementRow = converted.colIndex[element];
 				cellValue += converted.values[element] * table[elementRow][column];
 			}
 
@@ -510,13 +506,13 @@ csr csrSquareAlt(csr converted, int **table, long size) {
 }
 
 
-csr hadamard(csr csrTable, int **square, long size) {
-	long nonzeros = csrTable.rowIndex[size];
+csr hadamard(csr csrTable, int **square, uint size) {
+	uint nonzeros = csrTable.rowIndex[size];
 
-	long *newRowIndex = (long *) malloc((size+1) * sizeof(long));
-	long *newColIndex = (long *) malloc(nonzeros * sizeof(long));
+	uint *newRowIndex = (uint *) malloc((size+1) * sizeof(uint));
+	uint *newColIndex = (uint *) malloc(nonzeros * sizeof(uint));
 	int *newValues = (int *) malloc(nonzeros * sizeof(int));
-	long newNonzeros = 0;
+	uint newNonzeros = 0;
 
 	for (int i = 0; i < nonzeros; i++) {
 		newColIndex[i] = 0;
@@ -527,14 +523,14 @@ csr hadamard(csr csrTable, int **square, long size) {
 		newRowIndex[i] = 0;
 	}
 
-	for (long row = 0; row < size; row++) {
+	for (uint row = 0; row < size; row++) {
 		newRowIndex[row] = newNonzeros;
 
-		long start = csrTable.rowIndex[row];
-		long end = csrTable.rowIndex[row+1];
+		uint start = csrTable.rowIndex[row];
+		uint end = csrTable.rowIndex[row+1];
 
 		for (int i = start; i < end; i++) {
-			long column = csrTable.colIndex[i];
+			uint column = csrTable.colIndex[i];
 			int value = csrTable.values[i];
 
 			int cellValue = value * square[row][column];
@@ -559,30 +555,30 @@ csr hadamard(csr csrTable, int **square, long size) {
 
 
 // Converts a sparse matrix to CSR.
-csr matrixToCSR(int **table, long size) {
+csr matrixToCSR(int **table, uint size) {
 	// Keep track of the nonzero objects.
-	long nonzeros = 0; 
-	long resizes = 10;
+	uint nonzeros = 0; 
+	uint resizes = 10;
 
 	// Initialize the 3 necessary arrays. row_index has a standard length of "rows+1"
-	long *rowIndex = (long *) malloc((size+1) * sizeof(long));
+	uint *rowIndex = (uint *) malloc((size+1) * sizeof(uint));
 	for (int i = 0; i < size+1; i++) {
 		rowIndex[i] = 0;
 	}
 
 	// values and col_index have a length of the total nonzero values.
 	int *values = (int *) malloc(10 * size * sizeof(int));
-	long *colIndex = (long *) malloc(10 * size * sizeof(long));
+	uint *colIndex = (uint *) malloc(10 * size * sizeof(uint));
 	for (int i = 0; i < 10*size; i++) {
 		values[i] = 0;
 		colIndex[i] = 0;
 	}
 	
-	for (long i = 0; i < size; i++) {
+	for (uint i = 0; i < size; i++) {
 		// Add the nonzero values that are placed above the current row. 
 		rowIndex[i] = nonzeros;
 
-		for (long j = 0; j < size; j++) {
+		for (uint j = 0; j < size; j++) {
 			if (table[i][j] != 0) {
 				nonzeros++;
 
@@ -590,7 +586,7 @@ csr matrixToCSR(int **table, long size) {
 				if (nonzeros == resizes * size -1) {
 					resizes += 10;
 					values = (int *) realloc(values, (resizes * size) * sizeof(int));
-					colIndex = (long *) realloc(colIndex, (resizes * size) * sizeof(long));
+					colIndex = (uint *) realloc(colIndex, (resizes * size) * sizeof(uint));
 				}
 
 				// Add the nonzero value and the respective column index.
@@ -614,7 +610,7 @@ csr matrixToCSR(int **table, long size) {
 }
 
 
-int **CSRtoMatrix(csr table, long size) {
+int **CSRtoMatrix(csr table, uint size) {
 	// Initialize the new matrix and set everything to 0.
 	int **matrix = (int **) malloc(size * sizeof(int*));
 	for (int i = 0; i < size; i++) {
@@ -628,12 +624,12 @@ int **CSRtoMatrix(csr table, long size) {
 	}
 
 	// Scan each row for nonzero values and plug them into the matrix.
-	for (long row = 0; row < size; row++) {
-		long start = table.rowIndex[row];
-		long end = table.rowIndex[row+1];
+	for (uint row = 0; row < size; row++) {
+		uint start = table.rowIndex[row];
+		uint end = table.rowIndex[row+1];
 
 		for (int j = start; j < end; j++) {
-			long column = table.colIndex[j];
+			uint column = table.colIndex[j];
 			int value = table.values[j];
 			matrix[row][column] = value;
 		}
@@ -649,8 +645,8 @@ int **CSRtoMatrix(csr table, long size) {
  */ 
 // Prints a CSR data structure.
 void printCSR(csr converted) {
-  long size = converted.size;
-	long nonzeros = converted.rowIndex[size];
+  uint size = converted.size;
+	uint nonzeros = converted.rowIndex[size];
 	
 	printf("Values:");
 	for (int i = 0; i < nonzeros; i++) {
@@ -706,9 +702,9 @@ int **makeRandomSparseTable(int size) {
 }
 
 
-void printTable(int **table, long size) {
-	for (long i = 0; i < size; i++) {
-		for (long j = 0; j < size; j++) {
+void printTable(int **table, uint size) {
+	for (uint i = 0; i < size; i++) {
+		for (uint j = 0; j < size; j++) {
 			printf(" %d ", table[i][j]);
 		}
 		printf("\n");

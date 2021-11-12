@@ -38,14 +38,14 @@ int main(int argc, char **argv) {
   struct timeval stop, start;
   gettimeofday(&start, NULL);
 
-  csr C = hadamardSingleStep(mtx);
-  long *newTriangles = countTriangles(C);
+  csr C = hadamardSingleStep(mtx, 0, mtx.size);
+  uint *newTriangles = countTriangles(C);
 
   gettimeofday(&stop, NULL);
   uint timediff = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
   printf("\nThe serial algorithm took %lu us\n\n", timediff);
 
-  long triangles = 0;
+  uint triangles = 0;
   for (int i = 0; i < C.size; i++) {
     triangles += newTriangles[i];
   }
