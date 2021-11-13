@@ -106,7 +106,7 @@ csr hadamardSingleStep(csr table, uint start, uint end) {
 	// Finally, initialize the new row index array.
 	uint *newRowIndex = (uint *) calloc((size+1), sizeof(uint));
 
-  printf("Initialized the csr arrays\n");
+  printf("Nonzeros = %u\n", nonzeros);
 
   // Find the values in A^2, iff the original matrix had a nonzero in that position.
 	for (uint row = start; row < end; row++) {
@@ -121,15 +121,15 @@ csr hadamardSingleStep(csr table, uint start, uint end) {
       if (value > 0) {
         newValues[newNonzeros] = value;
         newColIndex[newNonzeros] = currentColumn;
-        newRowIndex[row+1]++;
+        newRowIndex[row - start + 1]++;
 
         newNonzeros++;
       }
     }
 
     // Pass the next value if we haven't reached the last row.
-    if (row < size - 1) {
-      newRowIndex[row+2] = newRowIndex[row+1];
+    if (row < end - 1) {
+      newRowIndex[row - start + 2] = newRowIndex[row - start + 1];
     }
 	}
 
@@ -168,8 +168,8 @@ int dot(csr table, uint row, uint column) {
 }
 
 
-uint *countTriangles(csr C) {
-	uint size = C.size;
+uint countTriangles(csr C, uint start, uint end) {
+	uint size = end - start;
 	uint *triangleCount = (uint *) malloc(size * sizeof(uint));
 	for (uint i = 0; i < size; i++) {
 		triangleCount[i] = 0;
@@ -177,21 +177,26 @@ uint *countTriangles(csr C) {
 
 	// Add all the values in each row, then divide by 2.
 	// Simulates the operation of multiplying the table with a nx1 vector.
-	for (uint i = 0; i < size; i++) {
-		uint start = C.rowIndex[i];
-		uint end = C.rowIndex[i+1];
+	for (uint i = start; i < end; i++) {
+		uint rowStart = C.rowIndex[i];
+		uint rowEnd = C.rowIndex[i+1];
 
-		for (uint j = start; j < end; j++) {
-			triangleCount[i] += C.values[j];
+		for (uint j = rowStart; j < rowEnd; j++) {
+			triangleCount[i - start] += C.values[j];
 			
 			// Divide by 2 if we reached the last value of the current row.
-			if (j == end - 1) {
-				triangleCount[i] /= 2;
+			if (j == rowEnd - 1) {
+				triangleCount[i - start] /= 2;
 			}
 		}
 	}
 
-	return triangleCount;
+  uint totalTriangles = 0;
+	for (uint i = 0; i < size; i++) {
+    totalTriangles += triangleCount[i];
+  }
+
+  return totalTriangles;
 }
 
 

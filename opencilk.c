@@ -26,20 +26,22 @@ int main(int argc, char **argv) {
   // MEASURE OPENCILK IMPLEMENTATION TIME.
   gettimeofday(&cilkStart, NULL);
 
-  hadamardCilk(mtx);
+  uint triangles = countTrianglesCilk(mtx);
 
-  // gettimeofday(&cilkStop, NULL);
-  // uint cilkTimediff = (cilkStop.tv_sec - cilkStart.tv_sec) * 1000000 + cilkStop.tv_usec - cilkStart.tv_usec;
-  // printf("\nopenCilk timediff =  %lu us\n", cilkTimediff);
+  gettimeofday(&cilkStop, NULL);
+  uint cilkTimediff = (cilkStop.tv_sec - cilkStart.tv_sec) * 1000000 + cilkStop.tv_usec - cilkStart.tv_usec;
+  printf("\nopenCilk timediff =  %lu us\n", cilkTimediff);
+
+  printf("\n\nTOTAL TRIANGLES WITH OPENCILK = %u\n", triangles);
 
 
-  // // MEASURE SERIAL IMPLEMENTATION TIME.
-  // gettimeofday(&serialStart, NULL);
+  // MEASURE SERIAL IMPLEMENTATION TIME.
+  gettimeofday(&serialStart, NULL);
 
-  // csrSquare(mtx, mtx.size);
+  csrSquare(mtx, mtx.size);
 
-  // gettimeofday(&serialStop, NULL);
-  // uint serialTimediff = (serialStop.tv_sec - serialStart.tv_sec) * 1000000 + serialStop.tv_usec - serialStart.tv_usec;
-  // printf("\nSerial timediff =  %lu us\n", serialTimediff);
+  gettimeofday(&serialStop, NULL);
+  uint serialTimediff = (serialStop.tv_sec - serialStart.tv_sec) * 1000000 + serialStop.tv_usec - serialStart.tv_usec;
+  printf("\nSerial timediff =  %lu us\n", serialTimediff);
 
 }

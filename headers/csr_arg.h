@@ -8,6 +8,8 @@
 typedef struct {
   csr table;
   int id;
+  uint start;
+  uint end;
 } csr_arg;
 
 #endif

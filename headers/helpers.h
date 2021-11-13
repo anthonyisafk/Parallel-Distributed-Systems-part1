@@ -4,7 +4,7 @@
 // Final version of the functions used.
 csr readmtx_dynamic(char *mtx, MM_typecode *t, int N, int M, int nz);
 csr hadamardSingleStep(csr table, uint start, uint end);
-uint *countTriangles(csr table);
+uint countTriangles(csr table, uint start, uint end);
 int dot(csr table, uint row, uint column);
 int **matmul (int **table1, int **table2, uint rows1, uint cols1, uint cols2);
 
