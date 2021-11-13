@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
   FILE *matrixFile;
   int M, N, nz;
   MM_typecode t;
-  char *mtxFileName = "tables/karate.mtx";
+  char *mtxFileName = "tables/G51.mtx";
   csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
   printf("\n\nJust finished reading.\n\n");
 
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
   gettimeofday(&start, NULL);
 
   csr C = hadamardSingleStep(mtx, 0, mtx.size);
-  uint newTriangles = countTriangles(C, 0, C.size);
+  uint newTriangles = countTriangles(C);
 
   gettimeofday(&stop, NULL);
   uint timediff = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;

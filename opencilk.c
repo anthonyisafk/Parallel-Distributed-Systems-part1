@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
   FILE *matrixFile;
   int M, N, nz;
   MM_typecode *t;
-  char *mtxFileName = "tables/karate.mtx";
+  char *mtxFileName = "tables/dblp-2010.mtx";
 
   csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
 
@@ -26,22 +26,25 @@ int main(int argc, char **argv) {
   // MEASURE OPENCILK IMPLEMENTATION TIME.
   gettimeofday(&cilkStart, NULL);
 
-  uint triangles = countTrianglesCilk(mtx);
+  uint trianglesCilk = countTrianglesCilk(mtx);
 
   gettimeofday(&cilkStop, NULL);
   uint cilkTimediff = (cilkStop.tv_sec - cilkStart.tv_sec) * 1000000 + cilkStop.tv_usec - cilkStart.tv_usec;
   printf("\nopenCilk timediff =  %lu us\n", cilkTimediff);
 
-  printf("\n\nTOTAL TRIANGLES WITH OPENCILK = %u\n", triangles);
+  printf("\nTOTAL TRIANGLES WITH OPENCILK = %u\n", trianglesCilk);
 
 
   // MEASURE SERIAL IMPLEMENTATION TIME.
   gettimeofday(&serialStart, NULL);
 
-  csrSquare(mtx, mtx.size);
+  csr C = hadamardSingleStep(mtx, 0, mtx.size);
+  uint trianglesSerial = countTriangles(C);
 
   gettimeofday(&serialStop, NULL);
   uint serialTimediff = (serialStop.tv_sec - serialStart.tv_sec) * 1000000 + serialStop.tv_usec - serialStart.tv_usec;
   printf("\nSerial timediff =  %lu us\n", serialTimediff);
+
+    printf("\nTOTAL TRIANGLES WITH SERIAL IMPLEMENTATION = %u\n", trianglesSerial);
 
 }

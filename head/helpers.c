@@ -168,8 +168,8 @@ int dot(csr table, uint row, uint column) {
 }
 
 
-uint countTriangles(csr C, uint start, uint end) {
-	uint size = end - start;
+uint countTriangles(csr C) {
+	uint size = C.size;
 	uint *triangleCount = (uint *) malloc(size * sizeof(uint));
 	for (uint i = 0; i < size; i++) {
 		triangleCount[i] = 0;
@@ -177,17 +177,12 @@ uint countTriangles(csr C, uint start, uint end) {
 
 	// Add all the values in each row, then divide by 2.
 	// Simulates the operation of multiplying the table with a nx1 vector.
-	for (uint i = start; i < end; i++) {
+	for (uint i = 0; i < size; i++) {
 		uint rowStart = C.rowIndex[i];
 		uint rowEnd = C.rowIndex[i+1];
 
 		for (uint j = rowStart; j < rowEnd; j++) {
-			triangleCount[i - start] += C.values[j];
-			
-			// Divide by 2 if we reached the last value of the current row.
-			if (j == rowEnd - 1) {
-				triangleCount[i - start] /= 2;
-			}
+			triangleCount[i] += C.values[j];
 		}
 	}
 
@@ -196,7 +191,7 @@ uint countTriangles(csr C, uint start, uint end) {
     totalTriangles += triangleCount[i];
   }
 
-  return totalTriangles;
+  return totalTriangles / 2;
 }
 
 
