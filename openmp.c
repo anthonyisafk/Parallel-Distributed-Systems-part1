@@ -8,8 +8,8 @@
  * 
  * -- Parallel implementation of the algorithm using openMP. --
  * 
- * Authors: Antonios Antoniou - 9482
- *          Efthymios Grigorakis - 9694
+ * Authors: Antonios Antoniou - 9482 - aantonii@ece.auth.gr
+ *          Efthymios Grigorakis - 9694 - eegrigor@ece.auth.gr
  *    
  * 2021 Aristotle University of Thessaloniki
  * Parallel and Distributed Systems.
