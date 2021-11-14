@@ -51,7 +51,7 @@ uint countTrianglesCilk(csr table) {
   uint *trianglesPerThread = (uint *) calloc(max_threads, sizeof(uint));
   uint totalTriangles = 0;
 
-  cilk_for(int i = 0; i < max_threads; i++) {
+  cilk_for (int i = 0; i < max_threads; i++) {
     int index = cilk_csr[i].id;
 
     trianglesPerThread[index] = countTriangles(cilk_csr[index].table);
@@ -89,16 +89,16 @@ int main(int argc, char **argv) {
   printf("\nTOTAL TRIANGLES WITH OPENCILK = %u\n", triangles_cilk);
 
 
-  // MEASURE SERIAL IMPLEMENTATION TIME.
-  gettimeofday(&serialStart, NULL);
+//   // MEASURE SERIAL IMPLEMENTATION TIME.
+//   gettimeofday(&serialStart, NULL);
 
-  csr C = hadamardSingleStep(mtx, 0, mtx.size);
-  uint triangles_serial = countTriangles(C);
+//   csr C = hadamardSingleStep(mtx, 0, mtx.size);
+//   uint triangles_serial = countTriangles(C);
 
-  gettimeofday(&serialStop, NULL);
-  uint serialTimediff = (serialStop.tv_sec - serialStart.tv_sec) * 1000000 + serialStop.tv_usec - serialStart.tv_usec;
-  printf("\nSerial timediff = %u us\n", serialTimediff);
+//   gettimeofday(&serialStop, NULL);
+//   uint serialTimediff = (serialStop.tv_sec - serialStart.tv_sec) * 1000000 + serialStop.tv_usec - serialStart.tv_usec;
+//   printf("\nSerial timediff = %u us\n", serialTimediff);
 
-  printf("\nTOTAL TRIANGLES WITH SERIAL IMPLEMENTATION = %u\n", triangles_serial);
+//   printf("\nTOTAL TRIANGLES WITH SERIAL IMPLEMENTATION = %u\n", triangles_serial);
 
 }

@@ -1,6 +1,14 @@
 #ifndef PROGRESS_COPIES_H
 #define PROGRESS_COPIES_H
 
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "../headers/mmio.h"
+#include "../headers/csr.h"
+#include "../headers/csr_arg.h"
+#include "../headers/helpers.h"
+
 
 // Calculates the square of CSR matrix, as uint as it's square.
 // FINAL VERSION OF THE FUNCTION.

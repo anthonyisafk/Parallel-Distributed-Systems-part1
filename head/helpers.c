@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+#include <limits.h>
 
 #include "../headers/mmio.h"
 #include "../headers/csr.h"
@@ -102,7 +104,8 @@ csr readmtx_dynamic(char *mtx, MM_typecode *t, int N, int M, int nz) {
 csr_arg *makeThreadArguments(csr table, int max_threads) {
   // Make a table of csr_arg structs. Each of them corresponds to a thread.
   uint size = table.size;
-  uint interval = size / max_threads;
+  uint nonzeros = table.rowIndex[size];
+  uint interval = nonzeros / max_threads;
   csr_arg *csr_args = (csr_arg *) malloc(max_threads * sizeof(csr_arg));
 
   // Placeholder for the total size of the csr_args array.
@@ -110,18 +113,28 @@ csr_arg *makeThreadArguments(csr table, int max_threads) {
   for (int i = 0; i < max_threads; i++) {
     // The starting and ending rows of each csr_arg. The first "max_threads-1" structures have equal size
     // and the last one gets the remaining rows of the integer division "size/max_threads".
-    uint start = i * interval;
-    uint end = (i == max_threads - 1) ? size : (i + 1) * interval;
-    uint size = end - start;
+    uint start = (i == 0) ? 0 : csr_args[i-1].end;
+    uint end = (i != max_threads - 1) ? start + 1 : size;
 
-    printf("start = %u\tend = %u\tsize = %u\n", start, end, size);
+    if (end != size) {
+      for (uint j = start + 1; j < size + 1; j++) {
+        if (table.rowIndex[j] > interval * (i + 1)) {
+          end = j;
+          break;
+        }
+      }
+    }
+
+    uint partialSize = end - start;
+
+    printf("start = %u\tend = %u\tsize = %u\n", start, end, partialSize);
     uint nonzeros = table.rowIndex[end] - table.rowIndex[start];
     printf("nonzeros = %u\n", nonzeros);
 
     // Initialize every attribute of each csr_args element, then add its size to 
     // the totalSize placeholder. Will be used to realloc() exactly that much memory.
-    csr_args[i].table.size = size;
-    csr_args[i].table.rowIndex = (uint *) malloc((size+1) * sizeof(uint));
+    csr_args[i].table.size = partialSize;
+    csr_args[i].table.rowIndex = (uint *) malloc((partialSize+1) * sizeof(uint));
     csr_args[i].table.colIndex = (uint *) malloc(nonzeros * sizeof(uint));
     csr_args[i].table.values = (int *) malloc(nonzeros * sizeof(int));
     csr_args[i].id = i;

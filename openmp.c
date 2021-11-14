@@ -36,7 +36,9 @@ uint countTrianglesOMP(csr table) {
   #pragma omp parallel 
   {
     int id = omp_get_thread_num();
+    printf("thread: %d\n", id);
     omp_csr[id].table = hadamardSingleStep(table, omp_csr[id].start, omp_csr[id].end);
+    printf("thread end: %d\n", id);
   }
 
   // Make a table of the triangles each thread will count for each respective csr_args element.
@@ -62,7 +64,7 @@ int main(int argc, char **argv) {
   FILE *matrixFile;
   int M, N, nz;
   MM_typecode *t;
-  char *mtxFileName = "tables/dblp-2010.mtx";
+  char *mtxFileName = "tables/dictionary28.mtx";
 
   csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
 

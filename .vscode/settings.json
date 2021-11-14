@@ -12,7 +12,8 @@
     "utility": "c",
     "stdio.h": "c",
     "cilk.h": "c",
-    "parallel_helpers.h": "c"
+    "parallel_helpers.h": "c",
+    "time.h": "c"
   },
   "C_Cpp.intelliSenseEngineFallback": "Disabled"
 }

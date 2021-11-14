@@ -28,32 +28,129 @@
 #define MAX_THREADS 4
 
 
+typedef struct {
+  csr original ;
+  csr_arg csrarg ; 
+} pthreads_arg;
 
 
+void *countTrianglesVoid(void *C) {
+  csr_arg *C_arg = (csr_arg *) C;
+
+  uint size = C_arg->table.size;
+	uint *triangleCount = (uint *) malloc(size * sizeof(uint));
+	for (uint i = 0; i < size; i++) {
+		triangleCount[i] = 0;
+	}
+
+	// Add all the values in each row, then divide by 2.
+	// Simulates the operation of multiplying the table with a nx1 vector.
+	for (uint i = 0; i < size; i++) {
+		uint rowStart = C_arg->table.rowIndex[i];
+		uint rowEnd = C_arg->table.rowIndex[i+1];
+
+		for (uint j = rowStart; j < rowEnd; j++) {
+			triangleCount[i] += C_arg->table.values[j];
+		}
+	}
+
+  uint totalTriangles = 0;
+	for (uint i = 0; i < size; i++) {
+    totalTriangles += triangleCount[i];
+  }
+
+  C_arg->start = totalTriangles / 2;
+}
+
+void *hadamardSingleStepVoid(void *csrarg) {
+  pthreads_arg *arg = (pthreads_arg *) csrarg;
+
+  uint start = arg->csrarg.start;
+  uint end = arg->csrarg.end;
+  uint size = end - start;
+  
+	uint nonzeros = arg->original.rowIndex[end] - arg->original.rowIndex[start];
+	uint newNonzeros = 0;
+	// The new values array. Intialize all to 0. Do the same for the new column indices.
+	int *newValues = (int *) calloc(nonzeros, sizeof(int));
+	uint *newColIndex = (uint *) calloc(nonzeros, sizeof(uint));
+
+	// Finally, initialize the new row index array.
+	uint *newRowIndex = (uint *) calloc((size+1), sizeof(uint));
+
+  printf("Nonzeros = %u\n", nonzeros);
+
+  // Find the values in A^2, iff the original matrix had a nonzero in that position.
+	for (uint row = start; row < end; row++) {
+    uint rowStart = arg->original.rowIndex[row];
+    uint rowEnd = arg->original.rowIndex[row+1];
+
+    for (uint index = rowStart; index < rowEnd; index++) {
+      uint currentColumn = arg->original.colIndex[index];
+
+      int value = dot(arg->original, row, currentColumn);
+
+      if (value > 0) {
+        newValues[newNonzeros] = value;
+        newColIndex[newNonzeros] = currentColumn;
+        newRowIndex[row - start + 1]++;
+
+        newNonzeros++;
+      }
+    }
+
+    // Pass the next value if we haven't reached the last row.
+    if (row < end - 1) {
+      newRowIndex[row - start + 2] = newRowIndex[row - start + 1];
+    }
+	}
+
+  arg->csrarg.table.size = size;
+  arg->csrarg.table.values = newValues;
+  arg->csrarg.table.rowIndex = newRowIndex;
+  arg->csrarg.table.colIndex = newColIndex;
+  //void *hadamardVoid = (void *) hadamard;
+  //return hadamardVoid;
+}
 
 
 uint countTrianglesPthread(csr table) {
-  omp_set_num_threads(MAX_THREADS);
 
   csr_arg *pthread_csr = makeThreadArguments(table, MAX_THREADS);
+  pthread_t threads[MAX_THREADS];
+  pthreads_arg arg[MAX_THREADS]; 
+
+  for(int i = 0 ; i < MAX_THREADS ; i++){
+    arg[i].original = table ; 
+    arg[i].csrarg = pthread_csr[i];
+  }
+
 
   for (int i = 0; i < MAX_THREADS; i++) {
-    pthread_create(&)
+    pthread_create(&threads[i], NULL, hadamardSingleStepVoid, (void *) &arg[i]);
   }
+
+  printf("\nInitialized void *args\n");
+
+  for(int i = 0 ; i < MAX_THREADS; i++) {
+    pthread_join(threads[i], NULL);
+  }
+
 
   // Make a table of the triangles each thread will count for each respective csr_args element.
   // That way, there is no need to stitch the individual CSR structures together.
-  uint *trianglesPerThread = (uint *) calloc(MAX_THREADS, sizeof(uint));
   uint totalTriangles = 0;
 
-  #pragma omp parallel
-  {
-    int id = omp_get_thread_num();
-    trianglesPerThread[id] = countTriangles(omp_csr[id].table);
+  for (int i = 0; i < MAX_THREADS; i++) {
+    pthread_create(&threads[i], NULL, countTrianglesVoid, (void *) &arg[i].csrarg);
   }
 
   for (int i = 0; i < MAX_THREADS; i++) {
-    totalTriangles += trianglesPerThread[i];
+    pthread_join(threads[i], NULL);
+  }
+
+  for (int i = 0; i < MAX_THREADS; i++) {
+    totalTriangles += arg[i].csrarg.start;
   }
 
   return totalTriangles;
@@ -64,22 +161,22 @@ int main(int argc, char **argv) {
   FILE *matrixFile;
   int M, N, nz;
   MM_typecode *t;
-  char *mtxFileName = "tables/dblp-2010.mtx";
+  char *mtxFileName = "tables/com-Youtube.mtx";
 
   csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
 
-  struct timeval openmpStop, openmpStart;
+  struct timeval pthreadStop, pthreadStart;
   struct timeval serialStop, serialStart;
 
   // MEASURE OPENCILK IMPLEMENTATION TIME.
-  gettimeofday(&openmpStart, NULL);
+  gettimeofday(&pthreadStart, NULL);
 
-  uint triangles_omp = countTrianglesOMP(mtx);
+  uint triangles_pthread = countTrianglesPthread(mtx);
 
-  gettimeofday(&openmpStop, NULL);
-  uint cilkTimediff = (openmpStop.tv_sec - openmpStart.tv_sec) * 1000000 + openmpStop.tv_usec - openmpStart.tv_usec;
-  printf("\nopenMP timediff =  %lu us\n", cilkTimediff);
-  printf("\nTOTAL TRIANGLES WITH OPENMP = %u\n", triangles_omp);
+  gettimeofday(&pthreadStop, NULL);
+  uint pthreadTimediff = (pthreadStop.tv_sec - pthreadStart.tv_sec) * 1000000 + pthreadStop.tv_usec - pthreadStart.tv_usec;
+  printf("\npthread timediff =  %lu us\n", pthreadTimediff);
+  printf("\nTOTAL TRIANGLES WITH PTHREADS = %u\n", triangles_pthread);
 
   // MEASURE SERIAL IMPLEMENTATION TIME.
   gettimeofday(&serialStart, NULL);
