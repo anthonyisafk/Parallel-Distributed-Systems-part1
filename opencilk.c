@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
 
   gettimeofday(&cilkStop, NULL);
   uint cilkTimediff = (cilkStop.tv_sec - cilkStart.tv_sec) * 1000000 + cilkStop.tv_usec - cilkStart.tv_usec;
-  printf("\nopenCilk timediff =  %lu us\n", cilkTimediff);
+  printf("\nopenCilk timediff =  %u us\n", cilkTimediff);
 
   printf("\nTOTAL TRIANGLES WITH OPENCILK = %u\n", triangles_cilk);
 
@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
 
   gettimeofday(&serialStop, NULL);
   uint serialTimediff = (serialStop.tv_sec - serialStart.tv_sec) * 1000000 + serialStop.tv_usec - serialStart.tv_usec;
-  printf("\nSerial timediff =  %lu us\n", serialTimediff);
+  printf("\nSerial timediff = %u us\n", serialTimediff);
 
   printf("\nTOTAL TRIANGLES WITH SERIAL IMPLEMENTATION = %u\n", triangles_serial);
 

@@ -9,4 +9,8 @@ int dot(csr table, uint row, uint column);
 uint countTriangles(csr table);
 void printCSR(csr converted);
 
+// Void functions used for the pthread implementation.
+void *hadamardSingleStepVoid(void *csrarg);
+void *countTrianglesVoid(void *table);
+
 #endif

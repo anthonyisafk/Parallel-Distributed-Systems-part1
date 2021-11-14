@@ -28,15 +28,17 @@
 #define MAX_THREADS 4
 
 
-uint countTrianglesOMP(csr table) {
+
+
+
+
+uint countTrianglesPthread(csr table) {
   omp_set_num_threads(MAX_THREADS);
 
-  csr_arg *omp_csr = makeThreadArguments(table, MAX_THREADS);
+  csr_arg *pthread_csr = makeThreadArguments(table, MAX_THREADS);
 
-  #pragma omp parallel 
-  {
-    int id = omp_get_thread_num();
-    omp_csr[id].table = hadamardSingleStep(table, omp_csr[id].start, omp_csr[id].end);
+  for (int i = 0; i < MAX_THREADS; i++) {
+    pthread_create(&)
   }
 
   // Make a table of the triangles each thread will count for each respective csr_args element.

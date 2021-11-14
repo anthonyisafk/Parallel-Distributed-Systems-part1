@@ -14,7 +14,7 @@
 // dimensions. Stores the column indices in each row that corresponds to a row in the
 // valuesByRow array. Then increases the size of each sub array by one, since most
 // vertices are connected to few other vertices.
-csr readmtx_dynamic(char *mtx, MM_typecode t, int N, int M, int nz) {
+csr readmtx_dynamic(char *mtx, MM_typecode *t, int N, int M, int nz) {
   FILE *matrixFile = fopen(mtx, "r");
 	int banner = mm_read_banner(matrixFile, &t);
 	int result = mm_read_mtx_crd_size(matrixFile, &M, &N, &nz);
@@ -68,7 +68,7 @@ csr readmtx_dynamic(char *mtx, MM_typecode t, int N, int M, int nz) {
   }
 
   // This is a binary matrix. All the nonzero values are 1 by default.
-  int *values = (uint *) malloc(nonzeros *sizeof(int));
+  uint *values = (uint *) malloc(nonzeros *sizeof(int));
   for (int i = 0; i < nonzeros; i++) {
     values[i] = 1;
   }
@@ -77,7 +77,7 @@ csr readmtx_dynamic(char *mtx, MM_typecode t, int N, int M, int nz) {
   uint *rowIndex = (uint *) calloc(N, sizeof(uint));
   uint *colIndex = (uint *) calloc(nonzeros, sizeof(uint));
 
-  for (uint row = 0; row < N; ++row) {
+  for (uint row = 0; row < N; row++) {
     int rowNonzeros = valuesByRow[row][0];
 
     for (int column = 1; column < rowNonzeros+1; column++) {
@@ -279,12 +279,12 @@ void printCSR(csr converted) {
 
 	printf("\nCol_index:");
 	for (int i = 0; i < nonzeros; i++) {
-		printf(" %ld ", converted.colIndex[i]);
+		printf(" %u", converted.colIndex[i]);
 	}
 
 	printf("\nRow_index:");
 	for (int i = 0; i < size+1; i++) {
-		printf(" %ld ", converted.rowIndex[i]);
+		printf(" %u ", converted.rowIndex[i]);
 	}
 	printf("\n\n");
 }
