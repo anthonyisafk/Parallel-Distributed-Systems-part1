@@ -17,9 +17,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <limits.h>
-#include <unistd.h>
 
 #include "headers/csr.h"
 #include "headers/mmio.h"

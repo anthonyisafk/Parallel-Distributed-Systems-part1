@@ -2,7 +2,6 @@
 #define CSR_ARG_H
 
 #include <stdio.h>
-
 #include "csr.h"
 
 typedef struct {

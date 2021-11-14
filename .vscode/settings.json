@@ -13,5 +13,6 @@
     "stdio.h": "c",
     "cilk.h": "c",
     "parallel_helpers.h": "c"
-  }
+  },
+  "C_Cpp.intelliSenseEngineFallback": "Disabled"
 }
