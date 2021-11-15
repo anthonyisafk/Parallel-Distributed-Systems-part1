@@ -26,7 +26,11 @@ clean:
 	rm -f sequential pthreads openmp opencilk
 
 test:
+	@printf "\n ---------- SEQUENTIAL ----------\n\n"
 	./sequential
+	@printf "\n ---------- PTHREAD ----------\n\n"
 	./pthreads
+	@printf "\n ---------- OPENMP ----------\n\n"
 	./openmp
+	@printf "\n ---------- OPENCILK ----------\n\n"
 	./opencilk
