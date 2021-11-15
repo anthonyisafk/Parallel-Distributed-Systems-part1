@@ -24,3 +24,9 @@ all: sequential pthreads openmp opencilk
 
 clean:
 	rm -f sequential pthreads openmp opencilk
+
+test:
+	./sequential
+	./pthreads
+	./openmp
+	./opencilk
