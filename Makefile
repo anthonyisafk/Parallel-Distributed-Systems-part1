@@ -2,7 +2,7 @@ CC=gcc
 MPICC=mpicc
 CILKCC=/usr/local/OpenCilk-9.0.1-Linux/bin/clang
 FLAGS=-O1
-WARNINGS=-w
+WARNINGS=-w # tell the compiler to stop emitting warnings.
 
 default: all
 
