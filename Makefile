@@ -10,7 +10,7 @@ sequential:
 	$(CC) $(WARNINGS) sequential.c -o sequential head/helpers.c head/mmio.c
 
 pthreads:
-	$(CC) $(WARNINGS) pthreads.c -o pthreads head/helpers.c head/mmio.c -lpthread
+	$(CC) $(FLAGS) $(WARNINGS) pthreads.c -o pthreads head/helpers.c head/mmio.c -lpthread
 
 openmp:
 	$(MPICC) $(FLAGS) $(WARNINGS) openmp.c -o openmp head/helpers.c head/mmio.c -fopenmp
