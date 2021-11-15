@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
   FILE *matrixFile;
   int M, N, nz;
   MM_typecode *t;
-  char *mtxFileName = "tables/dictionary28.mtx";
+  char *mtxFileName = "tables/NACA0015.mtx";
 
   csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
 
@@ -89,6 +89,7 @@ int main(int argc, char **argv) {
 
   gettimeofday(&serialStop, NULL);
   uint serialTimediff = (serialStop.tv_sec - serialStart.tv_sec) * 1000000 + serialStop.tv_usec - serialStart.tv_usec;
+  
   printf("\nSerial timediff =  %lu us\n", serialTimediff);
   printf("\nTOTAL TRIANGLES WITH SERIAL IMPLEMENTATION = %u\n", trianglesSerial);
 

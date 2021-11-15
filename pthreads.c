@@ -27,10 +27,12 @@
 
 #define MAX_THREADS 4
 
-
+// Utilized to be given to the void functions used by pthread. 
+// @param csrarg: the csr_arg struct that's used in the other two parallel algorithms.
+// @param original: contains the full, original CSR table.
 typedef struct {
-  csr original ;
-  csr_arg csrarg ; 
+  csr original;
+  csr_arg csrarg; 
 } pthreads_arg;
 
 
@@ -61,6 +63,7 @@ void *countTrianglesVoid(void *C) {
 
   C_arg->start = totalTriangles / 2;
 }
+
 
 void *hadamardSingleStepVoid(void *csrarg) {
   pthreads_arg *arg = (pthreads_arg *) csrarg;
@@ -109,15 +112,14 @@ void *hadamardSingleStepVoid(void *csrarg) {
   arg->csrarg.table.values = newValues;
   arg->csrarg.table.rowIndex = newRowIndex;
   arg->csrarg.table.colIndex = newColIndex;
-  //void *hadamardVoid = (void *) hadamard;
-  //return hadamardVoid;
 }
 
 
 uint countTrianglesPthread(csr table) {
-
   csr_arg *pthread_csr = makeThreadArguments(table, MAX_THREADS);
   pthread_t threads[MAX_THREADS];
+
+  // Initialize the sub-arrays and give them to the new pthreads_arg struct.
   pthreads_arg arg[MAX_THREADS]; 
 
   for(int i = 0 ; i < MAX_THREADS ; i++){
@@ -125,12 +127,11 @@ uint countTrianglesPthread(csr table) {
     arg[i].csrarg = pthread_csr[i];
   }
 
-
   for (int i = 0; i < MAX_THREADS; i++) {
+    printf("thread: %d\n", i);
     pthread_create(&threads[i], NULL, hadamardSingleStepVoid, (void *) &arg[i]);
+    printf("thread end: %d\n", i);
   }
-
-  printf("\nInitialized void *args\n");
 
   for(int i = 0 ; i < MAX_THREADS; i++) {
     pthread_join(threads[i], NULL);
@@ -161,12 +162,11 @@ int main(int argc, char **argv) {
   FILE *matrixFile;
   int M, N, nz;
   MM_typecode *t;
-  char *mtxFileName = "tables/com-Youtube.mtx";
+  char *mtxFileName = "tables/NACA0015.mtx";
 
   csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
 
   struct timeval pthreadStop, pthreadStart;
-  struct timeval serialStop, serialStart;
 
   // MEASURE OPENCILK IMPLEMENTATION TIME.
   gettimeofday(&pthreadStart, NULL);
@@ -175,18 +175,8 @@ int main(int argc, char **argv) {
 
   gettimeofday(&pthreadStop, NULL);
   uint pthreadTimediff = (pthreadStop.tv_sec - pthreadStart.tv_sec) * 1000000 + pthreadStop.tv_usec - pthreadStart.tv_usec;
+  
   printf("\npthread timediff =  %lu us\n", pthreadTimediff);
   printf("\nTOTAL TRIANGLES WITH PTHREADS = %u\n", triangles_pthread);
-
-  // MEASURE SERIAL IMPLEMENTATION TIME.
-  gettimeofday(&serialStart, NULL);
-
-  csr C = hadamardSingleStep(mtx, 0, mtx.size);
-  uint trianglesSerial = countTriangles(C);
-
-  gettimeofday(&serialStop, NULL);
-  uint serialTimediff = (serialStop.tv_sec - serialStart.tv_sec) * 1000000 + serialStop.tv_usec - serialStart.tv_usec;
-  printf("\nSerial timediff =  %lu us\n", serialTimediff);
-  printf("\nTOTAL TRIANGLES WITH SERIAL IMPLEMENTATION = %u\n", trianglesSerial);
 
 }

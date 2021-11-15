@@ -105,14 +105,17 @@ csr_arg *makeThreadArguments(csr table, int max_threads) {
   // Make a table of csr_arg structs. Each of them corresponds to a thread.
   uint size = table.size;
   uint nonzeros = table.rowIndex[size];
+
+  // Try to distribute the nonzero values as equally as possible between threads.
   uint interval = nonzeros / max_threads;
   csr_arg *csr_args = (csr_arg *) malloc(max_threads * sizeof(csr_arg));
 
   // Placeholder for the total size of the csr_args array.
   uint totalSize = 0;
+  
   for (int i = 0; i < max_threads; i++) {
-    // The starting and ending rows of each csr_arg. The first "max_threads-1" structures have equal size
-    // and the last one gets the remaining rows of the integer division "size/max_threads".
+    // The starting and ending rows of each csr_arg. The first "max_threads-1" structures share equal
+    // number of nonzero values and the last one gets the remaining rows.
     uint start = (i == 0) ? 0 : csr_args[i-1].end;
     uint end = (i != max_threads - 1) ? start + 1 : size;
 

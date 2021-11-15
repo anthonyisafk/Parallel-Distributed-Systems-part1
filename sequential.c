@@ -21,13 +21,14 @@
 #include "headers/csr.h"
 #include "headers/mmio.h"
 #include "headers/helpers.h"
+#include "headers/csr_arg.h"
 
 
 int main(int argc, char **argv) {
   FILE *matrixFile;
   int M, N, nz;
   MM_typecode t;
-  char *mtxFileName = "tables/G51.mtx";
+  char *mtxFileName = "tables/NACA0015.mtx";
   csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
   printf("\n\nJust finished reading.\n\n");
 
@@ -40,8 +41,8 @@ int main(int argc, char **argv) {
 
   gettimeofday(&stop, NULL);
   uint timediff = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+  
   printf("\nThe serial algorithm took %lu us\n\n", timediff);
-
   printf("\nTriangles in total: %ld\n", newTriangles);
 
 }
