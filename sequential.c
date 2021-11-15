@@ -1,6 +1,6 @@
 /*
  * sequential.c 
-
+ *
  * Convert a square N x N matrix into the CSR format, made for sparse matrices:
  * https://en.wikipedia.org/wiki/Sparse_matrix#Compressed_sparse_column_(CSC_or_CCS)
  * Then return its square in CSR format and perform the Hadamard 
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
   MM_typecode t;
   char *mtxFileName = "tables/NACA0015.mtx";
   csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
-  printf("\n\nJust finished reading.\n\n");
+  printf("\nJust finished reading.\n");
 
   // CALCULATE THE C ARRAY AND COUNT TRIANGLES.
   struct timeval stop, start;
@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
   gettimeofday(&stop, NULL);
   uint timediff = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
   
-  printf("\nThe serial algorithm took %lu us\n\n", timediff);
+  printf("\n\nThe serial algorithm took %lu us\n", timediff);
   printf("\nTriangles in total: %ld\n", newTriangles);
 
 }

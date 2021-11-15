@@ -1,6 +1,6 @@
 /*
  * pthreads.c 
-
+ *
  * Convert a square N x N matrix into the CSR format, made for sparse matrices:
  * https://en.wikipedia.org/wiki/Sparse_matrix#Compressed_sparse_column_(CSC_or_CCS)
  * Then return its square in CSR format and perform the Hadamard 
@@ -81,8 +81,6 @@ void *hadamardSingleStepVoid(void *csrarg) {
 	// Finally, initialize the new row index array.
 	uint *newRowIndex = (uint *) calloc((size+1), sizeof(uint));
 
-  printf("Nonzeros = %u\n", nonzeros);
-
   // Find the values in A^2, iff the original matrix had a nonzero in that position.
 	for (uint row = start; row < end; row++) {
     uint rowStart = arg->original.rowIndex[row];
@@ -130,11 +128,11 @@ uint countTrianglesPthread(csr table) {
   for (int i = 0; i < MAX_THREADS; i++) {
     printf("thread: %d\n", i);
     pthread_create(&threads[i], NULL, hadamardSingleStepVoid, (void *) &arg[i]);
-    printf("thread end: %d\n", i);
   }
 
   for(int i = 0 ; i < MAX_THREADS; i++) {
     pthread_join(threads[i], NULL);
+    printf("thread end: %d\n", i);
   }
 
 

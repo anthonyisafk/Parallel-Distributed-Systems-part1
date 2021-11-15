@@ -1,6 +1,6 @@
 /*
  * openmp.c 
-
+ *
  * Convert a square N x N matrix into the CSR format, made for sparse matrices:
  * https://en.wikipedia.org/wiki/Sparse_matrix#Compressed_sparse_column_(CSC_or_CCS)
  * Then return its square in CSR format and perform the Hadamard 
@@ -69,7 +69,6 @@ int main(int argc, char **argv) {
   csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
 
   struct timeval openmpStop, openmpStart;
-  struct timeval serialStop, serialStart;
 
   // MEASURE OPENCILK IMPLEMENTATION TIME.
   gettimeofday(&openmpStart, NULL);
@@ -81,16 +80,5 @@ int main(int argc, char **argv) {
   printf("\nopenMP timediff =  %lu us\n", cilkTimediff);
   printf("\nTOTAL TRIANGLES WITH OPENMP = %u\n", triangles_omp);
 
-  // MEASURE SERIAL IMPLEMENTATION TIME.
-  gettimeofday(&serialStart, NULL);
-
-  csr C = hadamardSingleStep(mtx, 0, mtx.size);
-  uint trianglesSerial = countTriangles(C);
-
-  gettimeofday(&serialStop, NULL);
-  uint serialTimediff = (serialStop.tv_sec - serialStart.tv_sec) * 1000000 + serialStop.tv_usec - serialStart.tv_usec;
-  
-  printf("\nSerial timediff =  %lu us\n", serialTimediff);
-  printf("\nTOTAL TRIANGLES WITH SERIAL IMPLEMENTATION = %u\n", trianglesSerial);
 
 }

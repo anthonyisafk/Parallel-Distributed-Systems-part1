@@ -151,7 +151,6 @@ csr_arg *makeThreadArguments(csr table, int max_threads) {
   }
 
   csr_args = (csr_arg *) realloc(csr_args, totalSize);
-  printf("\nInitialized csr_args\n\n");
 
   return csr_args;
 }
@@ -168,8 +167,6 @@ csr hadamardSingleStep(csr table, uint start, uint end) {
 
 	// Finally, initialize the new row index array.
 	uint *newRowIndex = (uint *) calloc((size+1), sizeof(uint));
-
-  printf("Nonzeros = %u\n", nonzeros);
 
   // Find the values in A^2, iff the original matrix had a nonzero in that position.
 	for (uint row = start; row < end; row++) {
