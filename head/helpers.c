@@ -198,7 +198,7 @@ csr hadamardSingleStep(csr table, uint start, uint end) {
 }
 
 
-// Calculates the dot product of two vectors.
+// Calculates the dot product of two vectors, that belong to the same matrix.
 int dot(csr table, uint row, uint column) {
   // Symmetric table. Rows are identical to columns and vice versa.
   uint rowStart = table.rowIndex[row];
@@ -215,7 +215,14 @@ int dot(csr table, uint row, uint column) {
   for (uint i = rowStart; i < rowEnd; i++) {
     for (uint j = lastMatch+1; j < colEnd; j++) {
       if (table.colIndex[i] == table.colIndex[j]) {
+        lastMatch = j;
         value += table.values[i] * table.values[j];
+        break;
+      } 
+      else if (table.colIndex[i] > table.colIndex[j]) {
+        lastMatch = j;
+      }
+      else if (table.colIndex[i] > table.colIndex[colEnd]) {
         break;
       }
     }
@@ -225,12 +232,10 @@ int dot(csr table, uint row, uint column) {
 }
 
 
-uint countTriangles(csr C) {
+uint *countTriangles(csr C) {
 	uint size = C.size;
-	uint *triangleCount = (uint *) malloc(size * sizeof(uint));
-	for (uint i = 0; i < size; i++) {
-		triangleCount[i] = 0;
-	}
+	uint *triangleCount = (uint *) calloc(size, sizeof(uint));
+
 
 	// Add all the values in each row, then divide by 2.
 	// Simulates the operation of multiplying the table with a nx1 vector.
@@ -238,17 +243,16 @@ uint countTriangles(csr C) {
 		uint rowStart = C.rowIndex[i];
 		uint rowEnd = C.rowIndex[i+1];
 
+    // Divide by 2 when we reach the last element.
 		for (uint j = rowStart; j < rowEnd; j++) {
-			triangleCount[i] += C.values[j];
+			triangleCount[i] = (j == rowEnd - 1) 
+        ? (triangleCount[i] + C.values[j]) / 2
+        : triangleCount[i] + C.values[j];
 		}
+    // printf(" %u ", triangleCount[i]);
 	}
 
-  uint totalTriangles = 0;
-	for (uint i = 0; i < size; i++) {
-    totalTriangles += triangleCount[i];
-  }
-
-  return totalTriangles / 2;
+  return triangleCount;
 }
 
 
