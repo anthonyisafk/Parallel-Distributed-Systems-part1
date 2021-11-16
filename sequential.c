@@ -46,6 +46,8 @@ data_arg measureTimeSerial(csr mtx, char *filename) {
 int main(int argc, char **argv) {
   int M, N, nz;
   MM_typecode *t;
+
+  int file = atoi(argv[1]); 
   int files_num = 5;
   int reps = 12;
 
@@ -66,45 +68,44 @@ int main(int argc, char **argv) {
     "comYoutube"
   };
 
-  char *title = "library_threads";
-  char *row1 = "seq";
+  FILE *statsFile = fopen("stats/data.csv", "a");
+  if (file == 0) {
+    char *title = "library_threads";
 
-  FILE *statsFile = fopen("stats/data.csv", "w");
-  fprintf(statsFile, "%s\t", title);
+    fprintf(statsFile, "%s\t", title);
 
-  for (int i = 0; i < files_num; i++) {
-    // Don't add a delimiter if we reached the end of the line.
-    // Change line instead.
-    if (i == files_num - 1) {
-      fprintf(statsFile, "%s\n", names[i]);
-    } else {
-      fprintf(statsFile, "%s\t", names[i]);
-    }
-  }
-
-  fprintf(statsFile, "%s\t", row1);
-
-  for (int i = 0; i < files_num; i++) {
-    uint totalTime = 0;
-    csr mtx = readmtx_dynamic(filenames[i], t, N, M, nz);
-
-    for (int rep = 0; rep < reps; rep++) {
-      data_arg data = measureTimeSerial(mtx, filenames[i]);
-
-      if (rep > 1) {
-        totalTime += data.time;
+    for (int i = 0; i < files_num; i++) {
+      // Don't add a delimiter if we reached the end of the line.
+      // Change line instead.
+      if (i == files_num - 1) {
+        fprintf(statsFile, "%s\n", names[i]);
+      } else {
+        fprintf(statsFile, "%s\t", names[i]);
       }
     }
-
-    uint meanTime = totalTime / (reps - 2);
-
-    if (i  == files_num - 1) {
-      fprintf(statsFile, "%d\n", meanTime);
-    } else {
-      fprintf(statsFile, "%d\t", meanTime);
-    }
+    char *row1 = "seq";
+    fprintf(statsFile, "%s\t", row1);
   }
-  fclose(statsFile);
 
+  csr mtx = readmtx_dynamic(filenames[file], t, N, M, nz);
+
+  uint totalTime = 0;
+  uint *time_addr = &totalTime;
+
+  for (int rep = 0; rep < reps; rep++) {
+    data_arg data = measureTimeSerial(mtx, filenames[file]);
+    data_arg *data_addr = &data;
+    if (rep > 1) {
+      totalTime += data.time;
+    }
+    remove(data_addr);
+  }
+
+  uint meanTime = totalTime / (reps - 2);
+  remove(time_addr);
+
+  fprintf(statsFile, "\t%d", meanTime);
+
+  fclose(statsFile);
   return 0;
 }

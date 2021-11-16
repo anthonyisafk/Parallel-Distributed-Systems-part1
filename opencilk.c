@@ -102,12 +102,15 @@ data_arg measureTimeCilk(csr mtx, char *filename, MM_typecode *t, int N, int M, 
 }
 
 int main(int argc, char **argv) {
+  int thread_index = atoi(argv[1]);
+  int file = atoi(argv[2]);
+
   FILE *matrixFile;
   int M, N, nz;
 
+  int reps = 12;
   int files_num = 5;
   int thread_num = 3;
-  char cilk[6] = "cilkN";
 
   MM_typecode *t;
   char *filenames[5] = {
@@ -120,34 +123,35 @@ int main(int argc, char **argv) {
 
   char *num_threads[3] = {"2", "4", "8"};
 
+  char cilk[6] = "cilkN";
+  cilk[4] = num_threads[thread_index][0];
+
   FILE *statsFile = fopen("stats/data.csv", "a");
-  uint **times = (uint **) malloc(thread_num * sizeof(uint *));
-  for (int i = 0; i < thread_num; i++) {
-    times[i] = (uint *) calloc(files_num, sizeof(uint));
+  if (file == 0) {
+    fprintf(statsFile, "\n%s", cilk);
   }
 
-  for (int i = 0; i < files_num; i++) {
-    csr mtx = readmtx_dynamic(filenames[i], t, N, M, nz);
-    for (int j = 0; j < thread_num; j++) {
-      data_arg data = measureTimeCilk(mtx, filenames[i], t, N, M, nz, num_threads[j]);
+  csr mtx = readmtx_dynamic(filenames[file], t, N, M, nz);
+  csr *mtx_addr = &mtx;
 
-      times[j][i] = data.time;
+  unsigned long totalTime = 0;
+  unsigned long *time_addr = &totalTime;
+
+  for (int rep = 0; rep < reps; rep++) {
+    data_arg data = measureTimeCilk(mtx, filenames[file], t, N, M, nz, num_threads[thread_index]);
+    data_arg *data_addr = &data;
+
+    if (rep > 1) {
+      totalTime += data.time;
     }
   }
 
-  for (int i = 0; i < thread_num; i++) {
-    cilk[4] = num_threads[i][0];
-    fprintf(statsFile, "%s\t", cilk);
+  uint meanTime = totalTime / (reps - 2);
+  remove(time_addr);
+  remove(mtx_addr);
 
-    for (int j = 0; j < files_num; j++) {
-      if (j == files_num - 1) {
-        fprintf(statsFile, "%u\n", times[i][j]);
-      } else {
-        fprintf(statsFile, "%u\t", times[i][j]);
-      }
-    }
-  }
+  fprintf(statsFile, "\t%u", meanTime); 
   fclose(statsFile);
 
-
+  return 0;
 }

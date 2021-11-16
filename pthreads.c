@@ -201,13 +201,15 @@ data_arg measureTimePthread(csr mtx, char *filename, int MAX_THREADS) {
 
 
 int main(int argc, char **argv) {
+  int thread_index = atoi(argv[1]);
+  int file = atoi(argv[2]);
+
   int M, N, nz;
   MM_typecode *t;
 
   int files_num = 5;
   int thread_num = 3;
   int reps = 12;
-  char pth[5] = "pthN";
 
   char *filenames[5] = {
     "tables/belgium_osm.mtx",
@@ -218,6 +220,8 @@ int main(int argc, char **argv) {
   };
 
   int num_threads[3] = {2, 4, 8};
+  char pth[5] = "pthN";
+  pth[3] = num_threads[thread_index] + '0';
 
   FILE *statsFile = fopen("stats/data.csv", "a");
   unsigned long **times = (unsigned long **) malloc(thread_num * sizeof(unsigned long *));
@@ -225,43 +229,33 @@ int main(int argc, char **argv) {
     times[i] = (unsigned long *) calloc(files_num, sizeof(unsigned long));
   }
 
-  for (int i = 0; i < files_num; i++) {
-    csr mtx = readmtx_dynamic(filenames[i], t, N, M, nz);
-    csr *mtx_addr = &mtx;
-
-    for (int j = 0; j < thread_num; j++) {
-      unsigned long totalTime = 0;
-      unsigned long *time_addr = &totalTime;
-
-
-      for (int rep = 0; rep < reps; rep++) {
-        data_arg data = measureTimePthread(mtx, filenames[i], num_threads[j]);
-        data_arg *data_addr = &data;
-
-        if (rep > 1) {
-          totalTime += data.time;
-        }
-        remove(data_addr);
-      }
-
-      times[j][i] = totalTime / (reps - 2);
-    }
-
-    remove(mtx_addr);
+  if (file == 0) {
+    fprintf(statsFile, "\n%s", pth);
   }
 
-  for (int i = 0; i < thread_num; i++) {
-    pth[3] = num_threads[i] + '0';
-    fprintf(statsFile, "%s\t", pth);
+  csr mtx = readmtx_dynamic(filenames[file], t, N, M, nz);
+  csr *mtx_addr = &mtx;
 
-    for (int j = 0; j < files_num; j++) {
-      if (j == files_num - 1) {
-        fprintf(statsFile, "%u\n", times[i][j]);
-      } else {
-        fprintf(statsFile, "%u\t", times[i][j]);
-      }
+  unsigned long totalTime = 0;
+  unsigned long *time_addr = &totalTime;
+
+  for (int rep = 0; rep < reps; rep++) {
+    data_arg data = measureTimePthread(mtx, filenames[file], num_threads[thread_index]);
+    data_arg *data_addr = &data;
+
+    if (rep > 1) {
+      totalTime += data.time;
     }
+    remove(data_addr);
   }
 
+  uint meanTime = totalTime / (reps - 2);
+
+  remove(time_addr);
+  remove(mtx_addr);
+
+  fprintf(statsFile, "\t%u", meanTime);
   fclose(statsFile);
+
+  return 0;
 }
