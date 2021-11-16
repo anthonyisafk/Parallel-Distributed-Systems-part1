@@ -25,7 +25,7 @@ all: sequential pthreads openmp opencilk
 clean:
 	rm -f sequential pthreads openmp opencilk
 
-measure_time:
+measure_times:
 	@printf "\n ---------- SEQUENTIAL ----------\n\n"
 	./sequential
 	@printf "\n ---------- PTHREAD ----------\n\n"
