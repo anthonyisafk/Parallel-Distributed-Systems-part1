@@ -8,7 +8,7 @@ csr readmtx_dynamic(char *mtx, MM_typecode *t, int N, int M, int nz);
 csr_arg *makeThreadArguments(csr table, int max_threads);
 csr hadamardSingleStep(csr table, uint start, uint end);
 int dot(csr table, uint row, uint column);
-uint countTriangles(csr C);
+uint *countTriangles(csr C);
 void printCSR(csr converted);
 
 #endif

@@ -23,26 +23,51 @@
 #include "headers/helpers.h"
 #include "headers/csr_arg.h"
 
-
-int main(int argc, char **argv) {
-  FILE *matrixFile;
-  int M, N, nz;
-  MM_typecode t;
-  char *mtxFileName = "tables/NACA0015.mtx";
-  csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
-  printf("\nJust finished reading.\n");
+uint *measureTimeSerial(char *filename, MM_typecode *t, int N, int M, int nz) {
+  // The data array that is returned. First element is the implementation time
+  // Seconf element is the actual result, used to ensure everything worked properly.
+  // uint data[2] = {0, 0};
+  
+  csr mtx = readmtx_dynamic(filename, t, N, M, nz);
 
   // CALCULATE THE C ARRAY AND COUNT TRIANGLES.
   struct timeval stop, start;
   gettimeofday(&start, NULL);
 
   csr C = hadamardSingleStep(mtx, 0, mtx.size);
-  uint newTriangles = countTriangles(C);
+  uint *data = countTriangles(C);
 
   gettimeofday(&stop, NULL);
-  uint timediff = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+  // data[0] = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
   
-  printf("\n\nThe serial algorithm took %lu us\n", timediff);
-  printf("\nTriangles in total: %ld\n", newTriangles);
+  printf("\n\nThe serial algorithm took %lu us\n", data[0]);
+  printf("\nTriangles in total: %ld\n", data[1]);
 
+  for(uint i = 0; i < mtx.size; i++) {
+    printf(" %u ", data[i]);
+  }
+
+  return data;
+}
+
+
+
+int main(int argc, char **argv) {
+  FILE *matrixFile;
+  int M, N, nz;
+  MM_typecode *t;
+  char *filenames[7] = {
+    "tables/belgium_osm.mtx",
+    "tables/dblp-2010.mtx",
+    "tables/NACA0015.mtx",
+    "tables/mycielskian13.mtx",
+    "tables/com-Youtube.mtx",
+    "tables/ca-CondMat.mtx",
+    "tables/karate.mtx"
+  };
+
+  measureTimeSerial(filenames[6], t, N, M, nz);
+
+
+  return 0;
 }

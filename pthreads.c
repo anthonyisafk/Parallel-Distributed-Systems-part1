@@ -30,38 +30,32 @@
 // Utilized to be given to the void functions used by pthread. 
 // @param csrarg: the csr_arg struct that's used in the other two parallel algorithms.
 // @param original: contains the full, original CSR table.
+// @param triangles: the result of the algorithm.
 typedef struct {
   csr original;
-  csr_arg csrarg; 
+  csr_arg csrarg;
+  uint *triangles; 
 } pthreads_arg;
 
 
 void *countTrianglesVoid(void *C) {
-  csr_arg *C_arg = (csr_arg *) C;
+  pthreads_arg *C_arg = (pthreads_arg *) C;
 
-  uint size = C_arg->table.size;
-	uint *triangleCount = (uint *) malloc(size * sizeof(uint));
-	for (uint i = 0; i < size; i++) {
-		triangleCount[i] = 0;
-	}
+  uint size = C_arg->csrarg.table.size;
 
 	// Add all the values in each row, then divide by 2.
 	// Simulates the operation of multiplying the table with a nx1 vector.
 	for (uint i = 0; i < size; i++) {
-		uint rowStart = C_arg->table.rowIndex[i];
-		uint rowEnd = C_arg->table.rowIndex[i+1];
+    C_arg->triangles[i] = 0;
+		uint rowStart = C_arg->csrarg.table.rowIndex[i];
+		uint rowEnd = C_arg->csrarg.table.rowIndex[i+1];
 
 		for (uint j = rowStart; j < rowEnd; j++) {
-			triangleCount[i] += C_arg->table.values[j];
+      C_arg->triangles[i] = (j == rowEnd - 1) 
+        ? (C_arg->triangles[i] + C_arg->csrarg.table.values[j]) / 2
+        : C_arg->triangles[i] + C_arg->csrarg.table.values[j];
 		}
 	}
-
-  uint totalTriangles = 0;
-	for (uint i = 0; i < size; i++) {
-    totalTriangles += triangleCount[i];
-  }
-
-  C_arg->start = totalTriangles / 2;
 }
 
 
@@ -114,13 +108,16 @@ void *hadamardSingleStepVoid(void *csrarg) {
 
 
 uint countTrianglesPthread(csr table) {
+  uint size = table.size;
+
   csr_arg *pthread_csr = makeThreadArguments(table, MAX_THREADS);
   pthread_t threads[MAX_THREADS];
 
   // Initialize the sub-arrays and give them to the new pthreads_arg struct.
   pthreads_arg arg[MAX_THREADS]; 
 
-  for(int i = 0 ; i < MAX_THREADS ; i++){
+  for (int i = 0 ; i < MAX_THREADS ; i++) {
+    arg[i].triangles = (uint *) calloc(pthread_csr[i].table.size, sizeof(uint));
     arg[i].original = table ; 
     arg[i].csrarg = pthread_csr[i];
   }
@@ -135,13 +132,22 @@ uint countTrianglesPthread(csr table) {
     printf("thread end: %d\n", i);
   }
 
-
-  // Make a table of the triangles each thread will count for each respective csr_args element.
-  // That way, there is no need to stitch the individual CSR structures together.
-  uint totalTriangles = 0;
+ // Make a table of the triangles each thread will count for each respective csr_args element.
+  uint **trianglesPerThread = (uint **) malloc(MAX_THREADS * sizeof(uint *));
+  uint totalSize = 0;
 
   for (int i = 0; i < MAX_THREADS; i++) {
-    pthread_create(&threads[i], NULL, countTrianglesVoid, (void *) &arg[i].csrarg);
+    uint partialSize = arg[i].csrarg.table.size * sizeof(uint);
+    totalSize += partialSize;
+
+    trianglesPerThread[i] = (uint *) calloc(partialSize, sizeof(uint));
+  }
+
+  // Realloc the table to avoid going off bounds.
+  trianglesPerThread = (uint **) realloc(trianglesPerThread, totalSize);
+
+  for (int i = 0; i < MAX_THREADS; i++) {
+    pthread_create(&threads[i], NULL, countTrianglesVoid, (void *) &arg[i]);
   }
 
   for (int i = 0; i < MAX_THREADS; i++) {
@@ -149,10 +155,31 @@ uint countTrianglesPthread(csr table) {
   }
 
   for (int i = 0; i < MAX_THREADS; i++) {
-    totalTriangles += arg[i].csrarg.start;
+    uint threadStart = arg[i].csrarg.start;
+    uint threadSize = arg[i].csrarg.table.size;
+
+    for (int j = 0; j < threadSize; j++) {
+      trianglesPerThread[i][j] = arg[i].triangles[j]; 
+    }
   }
 
-  return totalTriangles;
+  // Stitch all the board together. Use the 'start' notation to put each
+  // element in the designated place. 
+  uint *triangles = (uint *) calloc(size, sizeof(uint));
+  for (int i = 0; i < MAX_THREADS; i++) {
+    uint threadStart = arg[i].csrarg.start;
+    uint threadSize = arg[i].csrarg.table.size;
+
+    for (uint j = 0; j < threadSize; j++) {
+      triangles[threadStart + j] = trianglesPerThread[i][j];
+    }
+  }
+
+  for(uint i = 0; i < size; i++) {
+    printf(" %u ", triangles[i]);
+  }
+
+  return triangles;
 }
 
 
@@ -160,21 +187,28 @@ int main(int argc, char **argv) {
   FILE *matrixFile;
   int M, N, nz;
   MM_typecode *t;
-  char *mtxFileName = "tables/NACA0015.mtx";
+  char *filenames[7] = {
+    "tables/belgium_osm.mtx",
+    "tables/dblp-2010.mtx",
+    "tables/NACA0015.mtx",
+    "tables/mycielskian13.mtx",
+    "tables/com-Youtube.mtx",
+    "tables/ca-CondMat.mtx",
+    "tables/karate.mtx"
+  };
 
-  csr mtx = readmtx_dynamic(mtxFileName, t, N, M, nz);
+  csr mtx = readmtx_dynamic(filenames[6], t, N, M, nz);
 
   struct timeval pthreadStop, pthreadStart;
 
   // MEASURE OPENCILK IMPLEMENTATION TIME.
   gettimeofday(&pthreadStart, NULL);
 
-  uint triangles_pthread = countTrianglesPthread(mtx);
+  uint *triangles_pthread = countTrianglesPthread(mtx);
 
   gettimeofday(&pthreadStop, NULL);
   uint pthreadTimediff = (pthreadStop.tv_sec - pthreadStart.tv_sec) * 1000000 + pthreadStop.tv_usec - pthreadStart.tv_usec;
   
   printf("\npthread timediff =  %lu us\n", pthreadTimediff);
-  printf("\nTOTAL TRIANGLES WITH PTHREADS = %u\n", triangles_pthread);
 
 }
