@@ -52,6 +52,8 @@ data_arg measureTimeSerial(char *filename, MM_typecode *t, int N, int M, int nz)
 int main(int argc, char **argv) {
   int M, N, nz;
   MM_typecode *t;
+  int files_num = 5;
+
   char *filenames[5] = {
     "tables/belgium_osm.mtx",
     "tables/dblp-2010.mtx",
@@ -63,25 +65,39 @@ int main(int argc, char **argv) {
   // Used for the CSV file.
   char *names[5] = {
     "belgium_osm",
-    "dblp-2010",
+    "dblp2010",
     "NACA0015",
     "mycielskian13",
-    "com-Youtube"
+    "comYoutube"
   };
 
-  FILE *statsFile = fopen("stats/data.csv", "w");
-  for (int i = 0; i < 5; i++) {
-    fprintf(statsFile, "%s\t", names[i]);
-  }
-  fprintf(statsFile, "\n");
-  
+  char *title = "library_threads";
+  char *row1 = "seq";
 
-  for (int i = 0; i< 5; i++) {
+  FILE *statsFile = fopen("stats/data.csv", "w");
+  fprintf(statsFile, "%s\t", title);
+
+  for (int i = 0; i < files_num; i++) {
+    // Don't add a delimiter if we reached the end of the line.
+    // Change line instead.
+    if (i == files_num - 1) {
+      fprintf(statsFile, "%s\n", names[i]);
+    } else {
+      fprintf(statsFile, "%s\t", names[i]);
+    }
+  }
+
+  fprintf(statsFile, "%s\t", row1);
+
+  for (int i = 0; i < files_num; i++) {
     data_arg data = measureTimeSerial(filenames[i], t, N, M, nz);
 
-    fprintf(statsFile, "%d\t", data.time);
+    if (i  == files_num - 1) {
+      fprintf(statsFile, "%d\n", data.time);
+    } else {
+      fprintf(statsFile, "%d\t", data.time);
+    }
   }
-  fprintf(statsFile, "\n");
   fclose(statsFile);
 
   return 0;

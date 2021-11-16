@@ -204,6 +204,10 @@ int main(int argc, char **argv) {
   int M, N, nz;
   MM_typecode *t;
 
+  int files_num = 5;
+  int thread_num = 3;
+  char pth[5] = "pthN";
+
   char *filenames[5] = {
     "tables/belgium_osm.mtx",
     "tables/dblp-2010.mtx",
@@ -215,25 +219,31 @@ int main(int argc, char **argv) {
   int num_threads[3] = {2, 4, 8};
 
   FILE *statsFile = fopen("stats/data.csv", "a");
-  uint **times = (uint **) malloc(3 * sizeof(uint *));
-  for (int i = 0; i < 3; i++) {
-    times[i] = (uint *) calloc(5, sizeof(uint));
+  uint **times = (uint **) malloc(thread_num * sizeof(uint *));
+  for (int i = 0; i < thread_num; i++) {
+    times[i] = (uint *) calloc(files_num, sizeof(uint));
   }
 
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < files_num; i++) {
     csr mtx = readmtx_dynamic(filenames[i], t, N, M, nz);
-    for (int j = 0; j < 3; j++) {
+    for (int j = 0; j < thread_num; j++) {
       data_arg data = measureTimePthread(mtx, filenames[i], t, N, M, nz, num_threads[j]);
 
       times[j][i] = data.time;
     }
   }
 
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 5; j++) {
-      fprintf(statsFile, "%u\t", times[i][j]);
+  for (int i = 0; i < thread_num; i++) {
+    pth[3] = num_threads[i] + '0';
+    fprintf(statsFile, "%s\t", pth);
+
+    for (int j = 0; j < files_num; j++) {
+      if (j == files_num - 1) {
+        fprintf(statsFile, "%u\n", times[i][j]);
+      } else {
+        fprintf(statsFile, "%u\t", times[i][j]);
+      }
     }
-    fprintf(statsFile, "\n");
   }
 
   fclose(statsFile);
