@@ -22,8 +22,9 @@
 #include "headers/mmio.h"
 #include "headers/helpers.h"
 #include "headers/csr_arg.h"
+#include "headers/data_arg.h"
 
-uint *measureTimeSerial(char *filename, MM_typecode *t, int N, int M, int nz) {
+data_arg measureTimeSerial(char *filename, MM_typecode *t, int N, int M, int nz) {
   // The data array that is returned. First element is the implementation time
   // Seconf element is the actual result, used to ensure everything worked properly.
   // uint data[2] = {0, 0};
@@ -35,39 +36,53 @@ uint *measureTimeSerial(char *filename, MM_typecode *t, int N, int M, int nz) {
   gettimeofday(&start, NULL);
 
   csr C = hadamardSingleStep(mtx, 0, mtx.size);
-  uint *data = countTriangles(C);
+  uint *triangles = countTriangles(C);
 
   gettimeofday(&stop, NULL);
-  // data[0] = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+  uint timediff = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
   
-  printf("\n\nThe serial algorithm took %lu us\n", data[0]);
-  printf("\nTriangles in total: %ld\n", data[1]);
+  printf("\n\nThe serial algorithm took %lu us for %s\n", timediff, filename);
 
-  for(uint i = 0; i < mtx.size; i++) {
-    printf(" %u ", data[i]);
-  }
-
+  data_arg data = {timediff, triangles};
   return data;
 }
 
 
 
 int main(int argc, char **argv) {
-  FILE *matrixFile;
   int M, N, nz;
   MM_typecode *t;
-  char *filenames[7] = {
+  char *filenames[5] = {
     "tables/belgium_osm.mtx",
     "tables/dblp-2010.mtx",
     "tables/NACA0015.mtx",
     "tables/mycielskian13.mtx",
-    "tables/com-Youtube.mtx",
-    "tables/ca-CondMat.mtx",
-    "tables/karate.mtx"
+    "tables/com-Youtube.mtx"
   };
 
-  measureTimeSerial(filenames[6], t, N, M, nz);
+  // Used for the CSV file.
+  char *names[5] = {
+    "belgium_osm",
+    "dblp-2010",
+    "NACA0015",
+    "mycielskian13",
+    "com-Youtube"
+  };
 
+  FILE *statsFile = fopen("stats/data.csv", "w");
+  for (int i = 0; i < 5; i++) {
+    fprintf(statsFile, "%s\t", names[i]);
+  }
+  fprintf(statsFile, "\n");
+  
+
+  for (int i = 0; i< 5; i++) {
+    data_arg data = measureTimeSerial(filenames[i], t, N, M, nz);
+
+    fprintf(statsFile, "%d\t", data.time);
+  }
+  fprintf(statsFile, "\n");
+  fclose(statsFile);
 
   return 0;
 }

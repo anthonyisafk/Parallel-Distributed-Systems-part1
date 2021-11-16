@@ -25,12 +25,12 @@
 #include "headers/csr_arg.h"
 #include "headers/mmio.h"
 #include "headers/helpers.h"
+#include "headers/data_arg.h"
 
-#define MAX_THREADS "4"
 
-
-uint *countTrianglesCilk(csr table) {
-  int max_threads = atoi(MAX_THREADS);  
+uint *countTrianglesCilk(csr table, char *MAX_THREADS) {
+  int max_threads = atoi(MAX_THREADS);
+  printf("Threads: %d\n", max_threads);  
   __cilkrts_set_param("nworkers", MAX_THREADS);
   __cilkrts_init();
 
@@ -45,8 +45,6 @@ uint *countTrianglesCilk(csr table) {
     cilk_csr[index].table = hadamardSingleStep(table, cilk_csr[index].start, cilk_csr[index].end);
     printf("thread end: %d\n", i);
   }
-
-  printf("\nExited the loop and cilk_sync\n\n");
 
   // Make a table of the triangles each thread will count for each respective csr_args element.
   uint **trianglesPerThread = (uint **) malloc(max_threads * sizeof(uint *));
@@ -79,41 +77,67 @@ uint *countTrianglesCilk(csr table) {
     }
   }
 
-  for(uint i = 0; i < size; i++) {
-    printf(" %u ", triangles[i]);
-  }
+  // for (uint i = 0; i < size; i++) {
+  //   printf(" %u ", triangles[i]);
+  // }
 
   return triangles;
 }
 
 
+data_arg measureTimeCilk(csr mtx, char *filename, MM_typecode *t, int N, int M, int nz, char *MAX_THREADS) {
+  struct timeval stop, start;
+
+  gettimeofday(&start, NULL);
+  uint *triangles = countTrianglesCilk(mtx, MAX_THREADS);
+  gettimeofday(&stop, NULL);
+  
+  uint timediff = (stop.tv_sec - start.tv_sec) * 1000000 + stop.tv_usec - start.tv_usec;
+
+  printf("\openCilk took %u us for file %s, using %s threads.\n\n", 
+    timediff, filename, MAX_THREADS);
+
+  data_arg data = {timediff, triangles};
+  return data;
+}
+
 int main(int argc, char **argv) {
   FILE *matrixFile;
   int M, N, nz;
   MM_typecode *t;
-  char *filenames[7] = {
+  char *filenames[5] = {
     "tables/belgium_osm.mtx",
     "tables/dblp-2010.mtx",
     "tables/NACA0015.mtx",
     "tables/mycielskian13.mtx",
-    "tables/com-Youtube.mtx",
-    "tables/ca-CondMat.mtx",
-    "tables/karate.mtx"
+    "tables/com-Youtube.mtx"
   };
 
-  csr mtx = readmtx_dynamic(filenames[6], t, N, M, nz);
+  char *num_threads[3] = {"2", "4", "8"};
 
-  struct timeval cilkStop, cilkStart;
-  struct timeval serialStop, serialStart;
+  FILE *statsFile = fopen("stats/data.csv", "a");
+  uint **times = (uint **) malloc(3 * sizeof(uint *));
+  for (int i = 0; i < 3; i++) {
+    times[i] = (uint *) calloc(5, sizeof(uint));
+  }
 
-  // MEASURE OPENCILK IMPLEMENTATION TIME.
-  gettimeofday(&cilkStart, NULL);
+  for (int i = 0; i < 5; i++) {
+    csr mtx = readmtx_dynamic(filenames[i], t, N, M, nz);
+    for (int j = 0; j < 3; j++) {
+      data_arg data = measureTimeCilk(mtx, filenames[i], t, N, M, nz, num_threads[j]);
 
-  uint *triangles_cilk = countTrianglesCilk(mtx);
+      times[j][i] = data.time;
+    }
+  }
 
-  gettimeofday(&cilkStop, NULL);
-  uint cilkTimediff = (cilkStop.tv_sec - cilkStart.tv_sec) * 1000000 + cilkStop.tv_usec - cilkStart.tv_usec;
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 5; j++) {
+      fprintf(statsFile, "%u\t", times[i][j]);
+    }
+    fprintf(statsFile, "\n");
+  }
 
-  printf("\nopenCilk timediff =  %u us\n", cilkTimediff);
+  fclose(statsFile);
+
 
 }
