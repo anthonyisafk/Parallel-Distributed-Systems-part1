@@ -24,13 +24,7 @@
 #include "headers/csr_arg.h"
 #include "headers/data_arg.h"
 
-data_arg measureTimeSerial(char *filename, MM_typecode *t, int N, int M, int nz) {
-  // The data array that is returned. First element is the implementation time
-  // Seconf element is the actual result, used to ensure everything worked properly.
-  // uint data[2] = {0, 0};
-  
-  csr mtx = readmtx_dynamic(filename, t, N, M, nz);
-
+data_arg measureTimeSerial(csr mtx, char *filename) {  
   // CALCULATE THE C ARRAY AND COUNT TRIANGLES.
   struct timeval stop, start;
   gettimeofday(&start, NULL);
@@ -53,6 +47,7 @@ int main(int argc, char **argv) {
   int M, N, nz;
   MM_typecode *t;
   int files_num = 5;
+  int reps = 12;
 
   char *filenames[5] = {
     "tables/belgium_osm.mtx",
@@ -90,12 +85,23 @@ int main(int argc, char **argv) {
   fprintf(statsFile, "%s\t", row1);
 
   for (int i = 0; i < files_num; i++) {
-    data_arg data = measureTimeSerial(filenames[i], t, N, M, nz);
+    uint totalTime = 0;
+    csr mtx = readmtx_dynamic(filenames[i], t, N, M, nz);
+
+    for (int rep = 0; rep < reps; rep++) {
+      data_arg data = measureTimeSerial(mtx, filenames[i]);
+
+      if (rep > 1) {
+        totalTime += data.time;
+      }
+    }
+
+    uint meanTime = totalTime / (reps - 2);
 
     if (i  == files_num - 1) {
-      fprintf(statsFile, "%d\n", data.time);
+      fprintf(statsFile, "%d\n", meanTime);
     } else {
-      fprintf(statsFile, "%d\t", data.time);
+      fprintf(statsFile, "%d\t", meanTime);
     }
   }
   fclose(statsFile);

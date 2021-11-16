@@ -183,7 +183,7 @@ uint countTrianglesPthread(csr table, int MAX_THREADS) {
 }
 
 
-data_arg measureTimePthread(csr mtx, char *filename, MM_typecode *t, int N, int M, int nz, int MAX_THREADS) {
+data_arg measureTimePthread(csr mtx, char *filename, int MAX_THREADS) {
   struct timeval stop, start;
 
   gettimeofday(&start, NULL);
@@ -206,6 +206,7 @@ int main(int argc, char **argv) {
 
   int files_num = 5;
   int thread_num = 3;
+  int reps = 12;
   char pth[5] = "pthN";
 
   char *filenames[5] = {
@@ -219,18 +220,34 @@ int main(int argc, char **argv) {
   int num_threads[3] = {2, 4, 8};
 
   FILE *statsFile = fopen("stats/data.csv", "a");
-  uint **times = (uint **) malloc(thread_num * sizeof(uint *));
+  unsigned long **times = (unsigned long **) malloc(thread_num * sizeof(unsigned long *));
   for (int i = 0; i < thread_num; i++) {
-    times[i] = (uint *) calloc(files_num, sizeof(uint));
+    times[i] = (unsigned long *) calloc(files_num, sizeof(unsigned long));
   }
 
   for (int i = 0; i < files_num; i++) {
     csr mtx = readmtx_dynamic(filenames[i], t, N, M, nz);
-    for (int j = 0; j < thread_num; j++) {
-      data_arg data = measureTimePthread(mtx, filenames[i], t, N, M, nz, num_threads[j]);
+    csr *mtx_addr = &mtx;
 
-      times[j][i] = data.time;
+    for (int j = 0; j < thread_num; j++) {
+      unsigned long totalTime = 0;
+      unsigned long *time_addr = &totalTime;
+
+
+      for (int rep = 0; rep < reps; rep++) {
+        data_arg data = measureTimePthread(mtx, filenames[i], num_threads[j]);
+        data_arg *data_addr = &data;
+
+        if (rep > 1) {
+          totalTime += data.time;
+        }
+        remove(data_addr);
+      }
+
+      times[j][i] = totalTime / (reps - 2);
     }
+
+    remove(mtx_addr);
   }
 
   for (int i = 0; i < thread_num; i++) {
