@@ -98,15 +98,8 @@ data_arg measureTimeOMP(csr mtx, char *filename, MM_typecode *t, int N, int M, i
 }
 
 int main(int argc, char **argv) {
-  int thread_index = atoi(argv[1]);
-  int file = atoi(argv[2]);
-
   FILE *matrixFile;
   int M, N, nz;
-
-  int reps = 12;
-  int files_num = 5;
-  int thread_num = 3;
 
   MM_typecode *t;
   char *filenames[5] = {
@@ -119,6 +112,17 @@ int main(int argc, char **argv) {
 
   char *num_threads[3] = {2, 4, 8};
 
+  int reps = 12;
+  int files_num = 5;
+  int thread_num = 3;
+
+  // Select the number of threads.
+  int thread_index = atoi(argv[1]);
+  // Select the matrix to be read.
+  int file = atoi(argv[2]);
+
+  // Set the title, depending on the number of threads selected.
+  // Then print it, if this is the first file for that number.
   char omp[5] = "ompN";
   omp[3] = num_threads[thread_index] + '0';
 

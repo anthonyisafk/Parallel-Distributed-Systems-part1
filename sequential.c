@@ -25,7 +25,6 @@
 #include "headers/data_arg.h"
 
 data_arg measureTimeSerial(csr mtx, char *filename) {  
-  // CALCULATE THE C ARRAY AND COUNT TRIANGLES.
   struct timeval stop, start;
   gettimeofday(&start, NULL);
 
@@ -42,14 +41,9 @@ data_arg measureTimeSerial(csr mtx, char *filename) {
 }
 
 
-
 int main(int argc, char **argv) {
   int M, N, nz;
   MM_typecode *t;
-
-  int file = atoi(argv[1]); 
-  int files_num = 5;
-  int reps = 12;
 
   char *filenames[5] = {
     "tables/belgium_osm.mtx",
@@ -67,7 +61,13 @@ int main(int argc, char **argv) {
     "mycielskian13",
     "comYoutube"
   };
+  
+  // The index of the file to be read.
+  int file = atoi(argv[1]); 
+  int files_num = 5;
+  int reps = 12;
 
+  // If we're reading the first matrix, add a title to the CSV file.
   FILE *statsFile = fopen("stats/data.csv", "a");
   if (file == 0) {
     char *title = "library_threads";

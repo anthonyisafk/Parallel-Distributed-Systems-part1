@@ -201,15 +201,8 @@ data_arg measureTimePthread(csr mtx, char *filename, int MAX_THREADS) {
 
 
 int main(int argc, char **argv) {
-  int thread_index = atoi(argv[1]);
-  int file = atoi(argv[2]);
-
   int M, N, nz;
   MM_typecode *t;
-
-  int files_num = 5;
-  int thread_num = 3;
-  int reps = 12;
 
   char *filenames[5] = {
     "tables/belgium_osm.mtx",
@@ -220,15 +213,22 @@ int main(int argc, char **argv) {
   };
 
   int num_threads[3] = {2, 4, 8};
-  char pth[5] = "pthN";
-  pth[3] = num_threads[thread_index] + '0';
+
+  int files_num = 5;
+  int thread_num = 3;
+  int reps = 12;
+
+  // Select the number of threads.
+  int thread_index = atoi(argv[1]);
+  // Select the matrix to be read.
+  int file = atoi(argv[2]);
 
   FILE *statsFile = fopen("stats/data.csv", "a");
-  unsigned long **times = (unsigned long **) malloc(thread_num * sizeof(unsigned long *));
-  for (int i = 0; i < thread_num; i++) {
-    times[i] = (unsigned long *) calloc(files_num, sizeof(unsigned long));
-  }
 
+  // Set the title, depending on the number of threads selected.
+  // Then print it, if this is the first file for that number.
+  char pth[5] = "pthN";
+  pth[3] = num_threads[thread_index] + '0';
   if (file == 0) {
     fprintf(statsFile, "\n%s", pth);
   }
