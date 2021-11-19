@@ -11,3 +11,5 @@ The first assignment of the Parallel and Distributed Systems course requires us 
 \
 This is realized by calculating the \\( H = A \bigodot A^{2} \\) matrix (where ``\bigodot`` denotes the Hadamard, element-wise multiplication of two matrices). Afterwards, we calculate the ``C = (H \cdot e) / 2`` vector (where is a vector filled with ones, the same size as A). Each element on the `C` matrix now represents how many triangles this vertex is in.
 \
+
+<img src="https://render.githubusercontent.com/render/math?math=e^{i \pi} = -1">
