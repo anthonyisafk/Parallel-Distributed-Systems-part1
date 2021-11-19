@@ -100,7 +100,7 @@ csr readmtx_dynamic(char *mtx, MM_typecode *t, int N, int M, int nz) {
 }
 
 
-// Creates a csr_arg array, depending on the number of threads and and the CSR table.
+// Creates a csr_arg array, depending on the number of threads and the CSR table.
 csr_arg *makeThreadArguments(csr table, int max_threads) {
   // Make a table of csr_arg structs. Each of them corresponds to a thread.
   uint size = table.size;
@@ -212,6 +212,15 @@ int dot(csr table, uint row, uint column) {
   // the nexr position to get rid of unnecessary comparisons.
   uint lastMatch = colStart - 1;
 
+  /**
+   * 1. If table.colIndex[i] == table.colIndex[j] then we have a match. 
+   * Extract the value, set lastMatch, so the next loop starts searching after it.
+   * 2. If table.colIndex[i] > table.colIndex[j], the column wasn't found.
+   * Set lastMatch to j, so the next row searches after it.
+   * 3. If table.colIndex[i] > table.colIndex[colEnd], then there is no greater value throughout the row.
+   * Since table.colIndex[] is monotonic, the next searches are guaranteed to find no matches.
+   * So we stop scanning that row in general.
+   */ 
   for (uint i = rowStart; i < rowEnd; i++) {
     for (uint j = lastMatch+1; j < colEnd; j++) {
       if (table.colIndex[i] == table.colIndex[j]) {
@@ -232,6 +241,8 @@ int dot(csr table, uint row, uint column) {
 }
 
 
+// Simulates the multipliation of the C table with the e vector,
+// which contains exclusively 1's.
 uint *countTriangles(csr C) {
 	uint size = C.size;
 	uint *triangleCount = (uint *) calloc(size, sizeof(uint));
