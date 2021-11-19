@@ -3,20 +3,21 @@ MPICC=mpicc
 CILKCC=/usr/local/OpenCilk-9.0.1-Linux/bin/clang
 FLAGS=-O1
 WARNINGS=-w # tell the compiler to stop emitting warnings.
+INCLUDES=head/helpers.c head/mmio.c
 
 default: all
 
 sequential:
-	$(CC) $(WARNINGS) sequential.c -o sequential head/helpers.c head/mmio.c
+	$(CC) $(WARNINGS) sequential.c -o sequential $(INCLUDES)
 
 pthreads:
-	$(CC) $(FLAGS) $(WARNINGS) pthreads.c -o pthreads head/helpers.c head/mmio.c -lpthread
+	$(CC) $(FLAGS) $(WARNINGS) pthreads.c -o pthreads $(INCLUDES) -lpthread
 
 openmp:
-	$(MPICC) $(FLAGS) $(WARNINGS) openmp.c -o openmp head/helpers.c head/mmio.c -fopenmp
+	$(MPICC) $(FLAGS) $(WARNINGS) openmp.c -o openmp $(INCLUDES) -fopenmp
 
 opencilk:
-	$(CILKCC) $(FLAGS) $(WARNINGS) opencilk.c -o opencilk head/helpers.c head/mmio.c -fcilkplus
+	$(CILKCC) $(FLAGS) $(WARNINGS) opencilk.c -o opencilk $(INCLUDES) -fcilkplus
 
 all: sequential pthreads openmp opencilk
 
@@ -26,7 +27,7 @@ clean:
 	rm -f sequential pthreads openmp opencilk
 
 measure_times:
-	@printf " ---------- REMAKING DATA.CSV ----------"
+	@printf " ---------- REMAKING DATA.CSV ----------\n"
 	rm -f stats/data.csv
 	touch stats/data.csv
 	@printf "\n ---------- SEQUENTIAL ----------\n\n"
