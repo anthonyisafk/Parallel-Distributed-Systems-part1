@@ -42,10 +42,12 @@
 *.idb
 *.pdb
 
+# Binary files and the resulting pdf from the Pluto notebook.
 pthreads
 sequential
 openmp
 opencilk
+report.pdf
 
 # Kernel Module Compile Results
 *.mod*
