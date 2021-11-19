@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.1
+# v0.15.1
 
 using Markdown
 using InteractiveUtils
@@ -13,19 +13,25 @@ begin
 	using PlotlyJS
 end
 
-# ╔═╡ 886d7a04-a520-4f90-9b0c-077cc7aff289
+# ╔═╡ 0635fef4-8da7-4a7d-b763-791f6f227077
+df = DataFrame(CSV.File("stats/data.csv", delim = '\t'));
+
+# ╔═╡ 2685000b-9ed0-4c21-9a40-90a6147357aa
 md"""
 # Parallel and Distributed Systems - Assignment 1: Sparse matrices
 ## Aristotle University Thessaloniki - Electrical and Computer Engineering
 ### Authored by:
 ##### Antonios Antoniou - 9482 - aantonii@ece.auth.gr
 ##### Efthymios Grigorakis - 9694 - eegrigor@ece.auth.gr
+"""
 
+# ╔═╡ 886d7a04-a520-4f90-9b0c-077cc7aff289
+md"""
 ## The goal of this assignment
 The first assignment of the Parallel and Distributed Systems course requires us to read an `.mtx` file, depiciting a square, symmetric, undirected, non-weighted graph, in the form of a triangular matrix, whose complete set of values has to be determined by the programmer. For this table, we have to calculate how many triangles (i.e subgraphs with 3 vertices and 3 edges forming a closed structure) each vertex is a member of. **We will try to keep this report as short as possible, since you can find the full codebase** [on GitHub](https://github.com/anthonyisafk/pds-part1)
 \
 \
-This is realized by calculating the ``H = A \bigodot A^{2}`` matrix (where ``\bigodot`` denotes the Hadamard, element-wise multiplication of two matrices). Afterwards, we calculate the ``C = (H \cdot e) / 2`` vector (where is a vector filled with ones, the same size as the A matrix). Each element on the `C` matrix now represents how many triangles this vertex is in.
+This is realized by calculating the ``H = A \bigodot A^{2}`` matrix (where ``\bigodot`` denotes the Hadamard, element-wise multiplication of two matrices). Afterwards, we calculate the ``C = (H \cdot e) / 2`` vector (where is a vector filled with ones, the same size as A). Each element on the `C` matrix now represents how many triangles this vertex is in.
 \
 \
 After reading the `.mtx` file, chances are the table we're dealing with is sparse. This essentialy means that the amount of nonzero values is greatly outweighed by the total zero values in the matrix. For this, we use specialized formats, mainly:
@@ -33,18 +39,25 @@ After reading the `.mtx` file, chances are the table we're dealing with is spars
 - CSR & CSC (Compressed Sparsed Row - Column): When it comes to the CSR format, it consists of 3 arrays, containing a value and its corresponding column index, along with the `row index` array that dictates how many nonzero elements lie before the current row. The same holds for the CSC format, but column-wise. It is obvious that the matrices addressed in this assignment produce the same result either way, due to symmetry.
 More info on sparse matrices can be found [on Wikipedia](https://en.wikipedia.org/wiki/Sparse_matrix#:~:text=incremental%20matrix%20construction.-,Coordinate%20list%20(COO),good%20for%20incremental%20matrix%20construction.)
 
-### Preferred format and data quirks used
-The format our team decided to use was CSR. As has been already mentioned, the CSR and CSC formats are equivalent in the  case of **square, symmetric tables**. This means that we were able to replicate the matrix to matrix multiplications by calculating the dot product between the i-th row and the j-th **row** (instead of the j-th **column**), to produce the `B(i, j)` element of the `B = A^2` matrix.
+### Preferred format and data quirks utilized
+The format our team decided to use was CSR. As has been already mentioned, the CSR and CSC formats are equivalent in the  case of **square, symmetric tables**. This means that we were able to replicate the matrix to matrix multiplications by calculating the dot product between the i-th row and the j-th **row** (instead of the j-th **column**), to produce the ``B_{i, j}`` element of the ``B = A^{2}`` matrix.
 
 ### Calculating the C matrix
-Instead of calculating the square dot product of A first, and then plugging it into the Hadamard operation, it was **less time and memory consuming** to only calculate the values of ``A^{2}_{i,j}`` that would then be multiplied with a **nonzero value**. This meant that we only made any operation for the nonzero values of the original table, since ``A^{2}`` was very likely to become fairly dense.
+Instead of calculating the square dot product of A first, and then plugging it into the Hadamard operation, it was **less time and memory consuming** to only calculate the values of ``A^{2}_{i,j}`` that would then be multiplied with a **nonzero value**. This meant that we only made any operation for positions that coincided with the nonzero values of the original table, since ``A^{2}`` was very likely to become fairly dense.
 \
 \
-This method was used througout every algorithm, serial or not. The core difference between the two was the workload, that would be distributed between the threads while implementing the latter. Since each row in a CSR structure is completely independent of any other row, each thread was assigned a **subset of the rows of the original table**. The way the subsets would be distributed was found to save more time when it took nonzeros into account. Essentially, each thread had a sub-array with -almost- equal number of nonzero values, regardeless of how many rows it consisted of. Loosely, that could ensure a comparable amount of operations executed by each thread, which is exactly what we want when implementing a parallel algorithm. 
-"""
+This method was used througout every algorithm, serial or not. The core difference between the two was the workload, that would be distributed between the threads while implementing the latter. Since each row in a CSR structure is completely independent of any other row, each thread was assigned a **subset of the rows of the original table**. The way the subsets would be distributed was found to save more time when it took nonzeros into account. Essentially, each thread had a sub-array with -almost- equal number of nonzero values, regardeless of how many rows it consisted of. Loosely, that could ensure a comparable amount of operations executed by each thread, which is exactly what we want when implementing a parallel algorithm.
 
-# ╔═╡ 0635fef4-8da7-4a7d-b763-791f6f227077
-df = DataFrame(CSV.File("stats/data.csv", delim = '\t'));
+### Testing and measuring execution times
+After finalizing the sequential algorithm and the parallel ones, using `pthread`, `openMP` and `openCilk`, it was time to find various data structures and run tests on them. Our team used five sparse tables:
+1. [DIMACS10/belgium_osm](https://sparse.tamu.edu/DIMACS10/belgium_osm) 
+2. [LAW/dblp-2010](https://sparse.tamu.edu/LAW/dblp-2010)
+3. [DIMACS10/NACA0015](https://sparse.tamu.edu/DIMACS10/NACA0015)
+4. [mycielskian13](https://sparse.tamu.edu/Mycielski/mycielskian13)
+5. [snap/com-Youtube](https://sparse.tamu.edu/SNAP/com-Youtube)
+
+Each matrix was used once for the sequential algorithm, while the parallel algorithms were tested for **2, 4 and 8 threads**. Each test consisted of 12 repetitions, the first two of which were left out of the data measurement, to avoid the appearance of outliers. Then, the mean time was taken and added to the `data.csv` file, with info about the algorithm used and the number of threads, if any. Below is the resulting table with values converted to `ms`.
+"""
 
 # ╔═╡ dc15e6a5-e1ac-4b9b-8ae7-b76cb5441f0a
 # Divide all the values by 1000 to turn them into ms.
@@ -57,22 +70,51 @@ end
 # ╔═╡ 1d3d5a89-aa82-4bca-86de-831e0e8eb27f
 df
 
+# ╔═╡ f59016a6-2c4b-4d41-97d2-3aa89dbf68cd
+md"""
+The time measuring routine was handled by `Makefile`:
+```Makefile
+./openmp 1 2
+./openmp 1 3
+./openmp 1 4
+./openmp 2 0
+./openmp 2 1 # [...]
+```
+
+The `.c` files were given two arrays of filenames and number of threads, whose index was given to the terminal by the `measure_times` routine:
+
+```c
+char *filenames[5] = {
+	"tables/belgium_osm.mtx",
+	"tables/dblp-2010.mtx",
+	"tables/NACA0015.mtx",
+	"tables/mycielskian13.mtx",
+	"tables/com-Youtube.mtx"
+};
+```
+```c
+char *num_threads[3] = {2, 4, 8};
+```
+
+Each of the test was then written into the `data.csv` file. Below are the conclusions of the research process for each individual sparse matrix.
+"""
+
 # ╔═╡ 3d4521f2-6c24-475f-bbd3-a514b4cdb6ca
 # Make the groups to be used to make the groupedbar graph.
-begin
 	nms = vcat(
 		["sequential"],
 		repeat(["pthread", "openMP", "openCilk"], inner = 3)
 	);
+
+# ╔═╡ 462ffbfb-8840-4bc4-af0c-539e439bdb55
 	groups = vcat(
 		["1 thread"],
 		repeat(["2 threads", "4 threads", "8 threads"], outer = 3)
 	);
-end
 
 # ╔═╡ 4fbafa06-cf8b-4a4f-9b67-e261da77ae29
 # Use the PlotlyJS backend.
-plotlyjs()
+plotlyjs();
 
 # ╔═╡ 95c75c56-f89f-4c91-ab4b-be8f43b8f55d
 b1 = groupedbar(
@@ -113,9 +155,6 @@ b5 = groupedbar(
   xlabel = "Algorithm used",
   ylabel = "Execution times in ms"
 )
-
-# ╔═╡ c3de510e-6a19-4b0a-a784-4dc391ff2f8c
-
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1375,18 +1414,20 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╠═886d7a04-a520-4f90-9b0c-077cc7aff289
-# ╠═f4789190-4754-11ec-2a9b-cd01d6b5a6b4
-# ╠═0635fef4-8da7-4a7d-b763-791f6f227077
-# ╠═dc15e6a5-e1ac-4b9b-8ae7-b76cb5441f0a
+# ╟─f4789190-4754-11ec-2a9b-cd01d6b5a6b4
+# ╟─0635fef4-8da7-4a7d-b763-791f6f227077
+# ╟─2685000b-9ed0-4c21-9a40-90a6147357aa
+# ╟─886d7a04-a520-4f90-9b0c-077cc7aff289
+# ╟─dc15e6a5-e1ac-4b9b-8ae7-b76cb5441f0a
 # ╠═1d3d5a89-aa82-4bca-86de-831e0e8eb27f
-# ╠═3d4521f2-6c24-475f-bbd3-a514b4cdb6ca
-# ╠═4fbafa06-cf8b-4a4f-9b67-e261da77ae29
-# ╠═95c75c56-f89f-4c91-ab4b-be8f43b8f55d
+# ╟─f59016a6-2c4b-4d41-97d2-3aa89dbf68cd
+# ╟─3d4521f2-6c24-475f-bbd3-a514b4cdb6ca
+# ╟─462ffbfb-8840-4bc4-af0c-539e439bdb55
+# ╟─4fbafa06-cf8b-4a4f-9b67-e261da77ae29
+# ╟─95c75c56-f89f-4c91-ab4b-be8f43b8f55d
 # ╟─6f582b0e-886b-4016-9517-1ca5c7dc8094
 # ╟─36e9e4dd-b9b6-45c1-a381-11511977aeb2
 # ╟─6663a703-56f0-4ff0-bc68-72d968126a36
 # ╟─66a1adb5-34f9-46af-b096-bd0f72272268
-# ╠═c3de510e-6a19-4b0a-a784-4dc391ff2f8c
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
