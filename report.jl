@@ -31,10 +31,10 @@ md"""
 The first assignment of the Parallel and Distributed Systems course requires us to read an `.mtx` file, depiciting a square, symmetric, undirected, non-weighted graph, in the form of a triangular matrix, whose complete set of values has to be determined by the programmer. For this table, we have to calculate how many triangles (i.e subgraphs with 3 vertices and 3 edges forming a closed structure) each vertex is a member of. **We will try to keep this report as short as possible, since you can find the full codebase** [on GitHub](https://github.com/anthonyisafk/pds-part1)
 \
 \
-This is realized by calculating the ``H = A \bigodot A^{2}`` matrix (where ``\bigodot`` denotes the Hadamard, element-wise multiplication of two matrices). Afterwards, we calculate the ``C = (H \cdot e) / 2`` vector (where is a vector filled with ones, the same size as A). Each element on the `C` matrix now represents how many triangles this vertex is in.
+This is realized by calculating the ``H = A \bigodot A^{2}`` matrix (where ``\bigodot`` denotes the Hadamard, element-wise multiplication of two matrices). Afterwards, we calculate the ``C = (H \cdot e) / 2`` vector (where e is a vector filled with ones, the same size as A). Each element on the `C` matrix now represents how many triangles this vertex is in.
 \
 \
-After reading the `.mtx` file, chances are the table we're dealing with is sparse. This essentialy means that the amount of nonzero values is greatly outweighed by the total zero values in the matrix. For this, we use specialized formats, mainly:
+After reading the `.mtx` file, chances are the table we're dealing with is sparse. This essentially means that the amount of nonzero values is greatly outweighed by the total zero values in the matrix. For this, we use specialized formats, mainly:
 - COO (coordinate list): an array of `(row, column, value)` tuples,
 - CSR & CSC (Compressed Sparsed Row - Column): When it comes to the CSR format, it consists of 3 arrays, containing a value and its corresponding column index, along with the `row index` array that dictates how many nonzero elements lie before the current row. The same holds for the CSC format, but column-wise. It is obvious that the matrices addressed in this assignment produce the same result either way, due to symmetry.
 More info on sparse matrices can be found [on Wikipedia](https://en.wikipedia.org/wiki/Sparse_matrix#:~:text=incremental%20matrix%20construction.-,Coordinate%20list%20(COO),good%20for%20incremental%20matrix%20construction.)
