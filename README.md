@@ -1,4 +1,4 @@
-# pds-part1
+# Parallel-Distributed-Systems-part1
 
 ## Parallel and Distributed Systems - Assignment 1: Sparse matrices
 ### Aristotle University Thessaloniki - Electrical and Computer Engineering
